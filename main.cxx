@@ -202,7 +202,7 @@ int main() {
         // 2nd attribute buffer : colors
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-        cout << "test";
+        cout << "test\n";
         glVertexAttribPointer(
             1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
             3,                                // size
