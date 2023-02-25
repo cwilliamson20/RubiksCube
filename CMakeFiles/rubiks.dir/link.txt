@@ -1,1 +1,0 @@
-/usr/bin/c++    -rdynamic CMakeFiles/rubiks.dir/main.cxx.o  -o rubiks  -lGL -lGLEW /usr/lib/x86_64-linux-gnu/libglfw.so.3.3 

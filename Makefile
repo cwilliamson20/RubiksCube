@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = "/home/conniejw/CS 441/RubiksCube"
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -77,6 +66,17 @@ edit_cache:
 edit_cache/fast: edit_cache
 
 .PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -123,6 +123,46 @@ rubiks/fast:
 	$(MAKE) -f CMakeFiles/rubiks.dir/build.make CMakeFiles/rubiks.dir/build
 .PHONY : rubiks/fast
 
+#=============================================================================
+# Target rules for targets named shader
+
+# Build rule for target.
+shader: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 shader
+.PHONY : shader
+
+# fast build rule for target.
+shader/fast:
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/build
+.PHONY : shader/fast
+
+loadShader.o: loadShader.cpp.o
+
+.PHONY : loadShader.o
+
+# target to build an object file
+loadShader.cpp.o:
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/loadShader.cpp.o
+.PHONY : loadShader.cpp.o
+
+loadShader.i: loadShader.cpp.i
+
+.PHONY : loadShader.i
+
+# target to preprocess a source file
+loadShader.cpp.i:
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/loadShader.cpp.i
+.PHONY : loadShader.cpp.i
+
+loadShader.s: loadShader.cpp.s
+
+.PHONY : loadShader.s
+
+# target to generate assembly for a file
+loadShader.cpp.s:
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/loadShader.cpp.s
+.PHONY : loadShader.cpp.s
+
 main.o: main.cxx.o
 
 .PHONY : main.o
@@ -156,9 +196,13 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... rubiks"
+	@echo "... rebuild_cache"
+	@echo "... shader"
+	@echo "... loadShader.o"
+	@echo "... loadShader.i"
+	@echo "... loadShader.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

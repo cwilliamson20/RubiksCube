@@ -1,3 +1,0 @@
-/home/conniejw/CS 441/RubiksCube/CMakeFiles/rebuild_cache.dir
-/home/conniejw/CS 441/RubiksCube/CMakeFiles/edit_cache.dir
-/home/conniejw/CS 441/RubiksCube/CMakeFiles/rubiks.dir

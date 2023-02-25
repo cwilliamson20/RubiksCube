@@ -54,6 +54,7 @@ CMAKE_BINARY_DIR = "/home/conniejw/CS 441/RubiksCube"
 
 # The main recursive "all" target.
 all: CMakeFiles/rubiks.dir/all
+all: CMakeFiles/shader.dir/all
 
 .PHONY : all
 
@@ -64,6 +65,7 @@ preinstall:
 
 # The main recursive "clean" target.
 clean: CMakeFiles/rubiks.dir/clean
+clean: CMakeFiles/shader.dir/clean
 
 .PHONY : clean
 
@@ -71,7 +73,7 @@ clean: CMakeFiles/rubiks.dir/clean
 # Target rules for target CMakeFiles/rubiks.dir
 
 # All Build rule for target.
-CMakeFiles/rubiks.dir/all:
+CMakeFiles/rubiks.dir/all: CMakeFiles/shader.dir/all
 	$(MAKE) -f CMakeFiles/rubiks.dir/build.make CMakeFiles/rubiks.dir/depend
 	$(MAKE) -f CMakeFiles/rubiks.dir/build.make CMakeFiles/rubiks.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/home/conniejw/CS 441/RubiksCube/CMakeFiles" --progress-num=1,2 "Built target rubiks"
@@ -79,7 +81,7 @@ CMakeFiles/rubiks.dir/all:
 
 # Build rule for subdir invocation for target.
 CMakeFiles/rubiks.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "/home/conniejw/CS 441/RubiksCube/CMakeFiles" 2
+	$(CMAKE_COMMAND) -E cmake_progress_start "/home/conniejw/CS 441/RubiksCube/CMakeFiles" 4
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/rubiks.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start "/home/conniejw/CS 441/RubiksCube/CMakeFiles" 0
 .PHONY : CMakeFiles/rubiks.dir/rule
@@ -93,6 +95,33 @@ rubiks: CMakeFiles/rubiks.dir/rule
 CMakeFiles/rubiks.dir/clean:
 	$(MAKE) -f CMakeFiles/rubiks.dir/build.make CMakeFiles/rubiks.dir/clean
 .PHONY : CMakeFiles/rubiks.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/shader.dir
+
+# All Build rule for target.
+CMakeFiles/shader.dir/all:
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/depend
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir="/home/conniejw/CS 441/RubiksCube/CMakeFiles" --progress-num=3,4 "Built target shader"
+.PHONY : CMakeFiles/shader.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/shader.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start "/home/conniejw/CS 441/RubiksCube/CMakeFiles" 2
+	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/shader.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start "/home/conniejw/CS 441/RubiksCube/CMakeFiles" 0
+.PHONY : CMakeFiles/shader.dir/rule
+
+# Convenience name for target.
+shader: CMakeFiles/shader.dir/rule
+
+.PHONY : shader
+
+# clean rule for target.
+CMakeFiles/shader.dir/clean:
+	$(MAKE) -f CMakeFiles/shader.dir/build.make CMakeFiles/shader.dir/clean
+.PHONY : CMakeFiles/shader.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.
