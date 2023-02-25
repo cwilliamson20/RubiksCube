@@ -24,11 +24,8 @@ GLFWwindow* setUpAndCreateWindow() {
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    GLFWwindow* window = glfwCreateWindow(1000, 1000, "Rubik's Cube Simulator", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1024, 768, "Rubik's Cube Simulator", NULL, NULL);
     
-    // tell GL to only draw onto a pixel if the shape is closer to the viewer
-    glEnable(GL_DEPTH_TEST); // enable depth-testing
-    glDepthFunc(GL_LESS); // depth-testing interprets a smaller value as "closer"
 
 
     // make sure there weren't any error creating the window
@@ -68,9 +65,9 @@ int main() {
 	
 	// Camera matrix
 	mat4 View = lookAt(
-        vec3(4,3,3), // Camera is at (4,3,3), in World Space
+        vec3(4,3,3), // Camera is at (x, y, z), in World Space
         vec3(0,0,0), // and looks at the origin
-        vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
+        vec3(0,1,0)  // Head is up (set to x, y, z to look upside-down)
     );
 	// Model matrix : an identity matrix (model will be at the origin)
 	mat4 Model = mat4(1.0f);
@@ -173,11 +170,15 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
 
-    // give this tre
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+    // Accept fragment if it closer to the camera than the former one
+    glDepthFunc(GL_LESS);
+
     // window will close with alt + F4, X button, or escape key
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
         // clear the screen
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Use our shader
         glUseProgram(program_id);

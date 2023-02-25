@@ -1,5 +1,7 @@
 #version 400
+in vec3 fragment_color;
 out vec3 color;
 void main() {
-    color = vec3(1, 0, 0);
+    // the color of each vertex is interpolated across the triangle
+    color = fragment_color;
 }
