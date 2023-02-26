@@ -9,8 +9,9 @@ using std::cout;
 // avoid having to use glm:: all the time
 #include <glm/glm.hpp>
 using namespace glm;
-#include "shader.h"
 #include <glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
+#include "shader.h"
+#include "controls.h"
 
 GLFWwindow* setUpAndCreateWindow() {
     if (!glfwInit()) {
@@ -24,9 +25,19 @@ GLFWwindow* setUpAndCreateWindow() {
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    GLFWwindow* window = glfwCreateWindow(1024, 768, "Rubik's Cube Simulator", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(2048, 1536, "Rubik's Cube Simulator", NULL, NULL);
     
+    // Ensure we can capture the escape key being pressed below
+	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    // Hide the mouse and enable unlimited mouvement
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
+    // Set the mouse at the center of the screen
+    glfwPollEvents();
+    glfwSetCursorPos(window, 1024/2, 768/2);
 
+    // Cull triangles whose normal is not towards the camera
+    glEnable(GL_CULL_FACE);
 
     // make sure there weren't any error creating the window
     if (!window) {
@@ -44,9 +55,8 @@ GLFWwindow* setUpAndCreateWindow() {
 
 
 int main() {
+
     GLFWwindow *window = setUpAndCreateWindow();
-    // Ensure we can capture the escape key being pressed below
-    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
     // make the vao and set it as the current one
     GLuint vertex_array_ID;
@@ -57,22 +67,6 @@ int main() {
 
 	// Get a handle for our "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(program_id, "MVP");
-
-	// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-	mat4 Projection = perspective(radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-	// Or, for an ortho camera :
-	//glm::mat4 Projection = glm::ortho(-10.0f,10.0f,-10.0f,10.0f,0.0f,100.0f); // In world coordinates
-	
-	// Camera matrix
-	mat4 View = lookAt(
-        vec3(4,3,3), // Camera is at (x, y, z), in World Space
-        vec3(0,0,0), // and looks at the origin
-        vec3(0,1,0)  // Head is up (set to x, y, z to look upside-down)
-    );
-	// Model matrix : an identity matrix (model will be at the origin)
-	mat4 Model = mat4(1.0f);
-	// Our ModelViewProjection : multiplication of our 3 matrices
-	mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
     // test array of three vertices that will form one cube
     // Our vertices. Three consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
@@ -183,6 +177,12 @@ int main() {
         // Use our shader
         glUseProgram(program_id);
 
+        computeMatricesFromInputs(window);
+        mat4 ProjectionMatrix = getProjectionMatrix();
+        mat4 ViewMatrix = getViewMatrix();
+        mat4 ModelMatrix = mat4(1.0);
+        mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
+        
         // Send our transformation to the currently bound shader, 
 		// in the "MVP" uniform
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
@@ -203,8 +203,7 @@ int main() {
         // 2nd attribute buffer : colors
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-        cout << "test\n";
-        cout << "another test\n";
+
         glVertexAttribPointer(
             1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
             3,                                // size
@@ -217,6 +216,7 @@ int main() {
         // Draw the triangle !
         glDrawArrays(GL_TRIANGLES, 0, 12*3); // Starting from vertex 0; 3 vertices total -> 1 triangle
         glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
 
         // swap buffers
         glfwSwapBuffers(window);
