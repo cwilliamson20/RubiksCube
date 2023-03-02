@@ -14,7 +14,7 @@ message("GL link libraries: ${OPENGL_gl_LIBRARY}")
 
 add_library(shader loadShader.cpp)
 add_executable(rubiks main.cxx)
-target_link_libraries(rubiks shader controls)
+target_link_libraries(rubiks shader)
 if(APPLE)
   target_link_libraries(rubiks ${OPENGL_gl_LIBRARY} GLEW::glew_s glfw)
 else()
