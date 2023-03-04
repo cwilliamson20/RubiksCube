@@ -69,11 +69,12 @@ int main() {
         0, 1, 4
     };  
 
-        float colors[] = {
-         0.5f,  0.5f, 0.0f,  // top right
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
+    float colors[] = {
+        1.0f, 0.0f, 0.0f,   // 0 = red
+        0.0f, 1.0f, 0.0f,   // 1 = green
+        0.0f, 0.0f, 1.0,    // 2 = blue
+        1.0f, 0.0f, 1.0,    // 3 = purple
+        1.0f, 1.0f, 1.0     // 4 = white
     };
 
 
@@ -85,6 +86,10 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     // give our vertices to OpenGL
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    // tell OpenGL how to look at this data when drawing
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
 
     // store the indices of the triangles in an Element Buffer Object (EBO)
     // which is basically a vertex buffer object that stores indices to decide what vertices to draw
@@ -95,8 +100,20 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
+
+    // store the colors of each vertex of the triangle
+    // make a uint to identify the color buffer
+    GLuint color_buffer;
+    glGenBuffers(1, &color_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+    // tell OpenGL how to look at this data when drawing
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+
+
     // enable to draw in wireframe mode and see the edges of the triangles
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -104,24 +121,15 @@ int main() {
     glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
-
-
         // clear the screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Use our shader
         glUseProgram(program_id);
 
-        // set up the vertex buffer
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-
+        glBindVertexArray(vertex_array_ID);
         // Draw the triangle !
         glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
-        glDisableVertexAttribArray(0);
 
         // swap buffers
         glfwSwapBuffers(window);
