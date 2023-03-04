@@ -25,7 +25,7 @@ GLFWwindow* setUpAndCreateWindow() {
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    GLFWwindow* window = glfwCreateWindow(1024, 768, "Rubik's Cube Simulator", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1024, 1024, "Rubik's Cube Simulator", NULL, NULL);
     
 
 
@@ -54,27 +54,33 @@ int main() {
     glGenVertexArrays(1, &vertex_array_ID);
     glBindVertexArray(vertex_array_ID);
 
-    GLuint program_id = LoadShaders( "vertexshader.glsl", "fragmentshader.glsl" );
+    GLuint program_id = LoadShaders("vertexshader.glsl", "fragmentshader.glsl" );
+    // Use our shader
+    glUseProgram(program_id);
 
     float vertices[] = {
         0.5f,  0.5f, 0.0f,  // top right
         0.5f, -0.5f, 0.0f,  // bottom right
         -0.5f, -0.5f, 0.0f,  // bottom left
         -0.5f,  0.5f, 0.0f,   // top left 
-        1.0f, 1.0f, 0.0f
+        0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
     };
+    int NUM_TRIANGLES = 4;  // update this to draw different numbers of triangles
     unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,   // first triangle
-        1, 2, 3,    // second triangle
-        0, 1, 4
+        0, 4, 5,
+        0, 1, 3,   
+        1, 2, 3,    
+        0, 1, 4, 
     };  
 
     float colors[] = {
-        1.0f, 0.0f, 0.0f,   // 0 = red
-        0.0f, 1.0f, 0.0f,   // 1 = green
-        0.0f, 0.0f, 1.0,    // 2 = blue
-        1.0f, 0.0f, 1.0,    // 3 = purple
-        1.0f, 1.0f, 1.0     // 4 = white
+        1.0f, 0.0f, 0.0f,   // red
+        0.0f, 1.0f, 0.0f,   // green
+        0.0f, 0.0f, 1.0,    // blue
+        1.0f, 0.0f, 1.0,    // purple
+        1.0f, 1.0f, 1.0,    // white
+        1.0f, 1.0f, 0.0,    // yellow
     };
 
 
@@ -122,14 +128,20 @@ int main() {
     // window will close with alt + F4, X button, or escape key
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
         // clear the screen
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Use our shader
-        glUseProgram(program_id);
-
         glBindVertexArray(vertex_array_ID);
-        // Draw the triangle !
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+
+        // transform the triangles
+        mat4 trans = mat4(1.0f);
+        trans = translate(trans, vec3(.5f, -.5f, 0.0f));
+        trans = rotate(trans, (float)glfwGetTime(), vec3(0.0f, 0.0f, 1.0f));
+        unsigned int transform_loc = glGetUniformLocation(program_id, "transform");
+        glUniformMatrix4fv(transform_loc, 1, GL_FALSE, value_ptr(trans));
+
+        // Draw the triangles
+        glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
 
         // swap buffers
         glfwSwapBuffers(window);
