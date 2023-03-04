@@ -13,6 +13,32 @@ using namespace glm;
 #include <glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
 #include <glm/gtc/type_ptr.hpp>
 
+// TODO: make these be held in their own file for easy updating instead of sitting up here
+float vertices[] = {
+    0.5f,  0.5f, 0.0f,  // top right
+    0.5f, -0.5f, 0.0f,  // bottom right
+    -0.5f, -0.5f, 0.0f,  // bottom left
+    -0.5f,  0.5f, 0.0f,   // top left 
+    0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f,
+};
+int NUM_TRIANGLES = 4;  // update this to draw different numbers of triangles
+unsigned int indices[] = {  // note that we start from 0!
+    0, 4, 5,
+    0, 1, 3,   
+    1, 2, 3,    
+    0, 1, 4, 
+};  
+
+float colors[] = {
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
+};
+
 GLFWwindow* setUpAndCreateWindow() {
     if (!glfwInit()) {
         // initialization of GLFW failed
@@ -43,49 +69,7 @@ GLFWwindow* setUpAndCreateWindow() {
     return window;
 }
 
-
-int main() {
-    GLFWwindow *window = setUpAndCreateWindow();
-    // Ensure we can capture the escape key being pressed below
-    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-
-    // make the vao and set it as the current one
-    GLuint vertex_array_ID;
-    glGenVertexArrays(1, &vertex_array_ID);
-    glBindVertexArray(vertex_array_ID);
-
-    GLuint program_id = LoadShaders("vertexshader.glsl", "fragmentshader.glsl" );
-    // Use our shader
-    glUseProgram(program_id);
-
-    float vertices[] = {
-        0.5f,  0.5f, 0.0f,  // top right
-        0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f,   // top left 
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-    };
-    int NUM_TRIANGLES = 4;  // update this to draw different numbers of triangles
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 4, 5,
-        0, 1, 3,   
-        1, 2, 3,    
-        0, 1, 4, 
-    };  
-
-    float colors[] = {
-        1.0f, 0.0f, 0.0f,   // red
-        0.0f, 1.0f, 0.0f,   // green
-        0.0f, 0.0f, 1.0,    // blue
-        1.0f, 0.0f, 1.0,    // purple
-        1.0f, 1.0f, 1.0,    // white
-        1.0f, 1.0f, 0.0,    // yellow
-    };
-
-
-    // make a uint that will identify our vertex buffer
-    GLuint vertex_buffer;
+void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     // generate 1 buffer, put the resulting identifier in vertex_buffer
     glGenBuffers(1, &vertex_buffer);
     // bind it to the array buffer
@@ -99,8 +83,6 @@ int main() {
 
     // store the indices of the triangles in an Element Buffer Object (EBO)
     // which is basically a vertex buffer object that stores indices to decide what vertices to draw
-    // create the element buffer object    
-    GLuint EBO;
     glGenBuffers(1, &EBO);
     // bind the EBO and copy the indices into the buffer
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -108,15 +90,32 @@ int main() {
 
 
     // store the colors of each vertex of the triangle
-    // make a uint to identify the color buffer
-    GLuint color_buffer;
     glGenBuffers(1, &color_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
     // tell OpenGL how to look at this data when drawing
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
+}
 
+int main() {
+    GLFWwindow *window = setUpAndCreateWindow();
+    cout << colors[0];
+    // Ensure we can capture the escape key being pressed below
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+
+    // make the vao and set it as the current one
+    GLuint vertex_array_ID;
+    glGenVertexArrays(1, &vertex_array_ID);
+    glBindVertexArray(vertex_array_ID);
+
+    GLuint program_id = LoadShaders("vertexshader.glsl", "fragmentshader.glsl" );
+    // Use our shader
+    glUseProgram(program_id);
+
+    // set up buffers and EBO
+    GLuint vertex_buffer, EBO, color_buffer;
+    setUpBuffersAndEBO(vertex_buffer, EBO, color_buffer);
 
     // enable to draw in wireframe mode and see the edges of the triangles
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
