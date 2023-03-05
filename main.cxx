@@ -18,6 +18,14 @@ vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
 vec3 camera_front = vec3(0.0f, 0.0f, -1.0f);
 vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
 
+// variables for mouse camera movement
+bool first_mouse = true;
+float mouse_yaw   = -90.0f;	// mouse_yaw is initialized to -90.0 degrees since a mouse_yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+float mouse_pitch =  0.0f;
+float lastX =  800.0f / 2.0;
+float lastY =  600.0 / 2.0;
+float fov   =  45.0f;
+
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
 
@@ -219,7 +227,7 @@ void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_trans
     view = lookAt(camera_pos, camera_pos + camera_front, camera_up);
 
     mat4 projection;
-    projection = perspective(radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
+    projection = perspective(radians(fov), (float)width/(float)height, 0.1f, 100.0f);
 
     // send to the shader
     GLuint model_loc = glGetUniformLocation(program_id, "model");
@@ -230,12 +238,56 @@ void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_trans
     glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
 }
 
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (first_mouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        first_mouse = false;
+    }
+  
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; 
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.01f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    mouse_yaw   += xoffset;
+    mouse_pitch += yoffset;
+
+    if(mouse_pitch > 89.0f)
+        mouse_pitch = 89.0f;
+    if (mouse_pitch < -89.0f)
+        mouse_pitch = -89.0f;
+
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(mouse_yaw)) * cos(glm::radians(mouse_pitch));
+    direction.y = sin(glm::radians(mouse_pitch));
+    direction.z = sin(glm::radians(mouse_yaw)) * cos(glm::radians(mouse_pitch));
+    camera_front = glm::normalize(direction);
+}  
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    fov -= (float)yoffset;
+    if (fov < 1.0f)
+        fov = 1.0f;
+    if (fov > 45.0f)
+        fov = 45.0f; 
+}
+
 int main() {
     int window_width = 800;
     int window_height = 600;
     GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    // ensure we can get mouse movement for the camera
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
 
     // make the vao and set it as the current one
     GLuint vertex_array_ID;
@@ -266,6 +318,8 @@ int main() {
 
         // process input
         processInput(window);
+        glfwSetCursorPosCallback(window, mouse_callback); 
+        glfwSetScrollCallback(window, scroll_callback);  
 
         // clear the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
