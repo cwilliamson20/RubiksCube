@@ -15,14 +15,50 @@ using namespace glm;
 
 // TODO: make these be held in their own file for easy updating instead of sitting up here
 float vertices[] = {
-    0.5f,  0.5f, 0.0f,  // top right
-    0.5f, -0.5f, 0.0f,  // bottom right
-    -0.5f, -0.5f, 0.0f,  // bottom left
-    -0.5f,  0.5f, 0.0f,   // top left 
-    0.0f, 0.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+    -0.5f,  0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f,
+
+    -0.5f, -0.5f,  0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f,
+    -0.5f, -0.5f,  0.5f,
+
+    -0.5f,  0.5f,  0.5f, 
+    -0.5f,  0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f,  
+    -0.5f, -0.5f, -0.5f, 
+    -0.5f, -0.5f,  0.5f, 
+    -0.5f,  0.5f,  0.5f, 
+
+     0.5f,  0.5f,  0.5f,
+     0.5f,  0.5f, -0.5f, 
+     0.5f, -0.5f, -0.5f, 
+     0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f,  0.5f,  
+     0.5f,  0.5f,  0.5f, 
+
+    -0.5f, -0.5f, -0.5f,  
+     0.5f, -0.5f, -0.5f, 
+     0.5f, -0.5f,  0.5f,  
+     0.5f, -0.5f,  0.5f,  
+    -0.5f, -0.5f,  0.5f, 
+    -0.5f, -0.5f, -0.5f,  
+
+    -0.5f,  0.5f, -0.5f, 
+     0.5f,  0.5f, -0.5f, 
+     0.5f,  0.5f,  0.5f, 
+     0.5f,  0.5f,  0.5f, 
+    -0.5f,  0.5f,  0.5f,  
+    -0.5f,  0.5f, -0.5f,  
 };
-int NUM_TRIANGLES = 4;  // update this to draw different numbers of triangles
+
+int NUM_TRIANGLES = 1;  // update this to draw different numbers of triangles
 unsigned int indices[] = {  // note that we start from 0!
     0, 4, 5,
     0, 1, 3,   
@@ -37,9 +73,58 @@ float colors[] = {
     1.0f, 0.0f, 1.0,    // purple
     1.0f, 1.0f, 1.0,    // white
     1.0f, 1.0f, 0.0,    // yellow
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
+    1.0f, 0.0f, 0.0f,   // red
+    0.0f, 1.0f, 0.0f,   // green
+    0.0f, 0.0f, 1.0,    // blue
+    1.0f, 0.0f, 1.0,    // purple
+    1.0f, 1.0f, 1.0,    // white
+    1.0f, 1.0f, 0.0,    // yellow
 };
 
-GLFWwindow* setUpAndCreateWindow() {
+glm::vec3 cubePositions[] = {
+    glm::vec3( 0.0f,  0.0f,  0.0f), 
+    glm::vec3( 2.0f,  5.0f, -15.0f), 
+    glm::vec3(-1.5f, -2.2f, -2.5f),  
+    glm::vec3(-3.8f, -2.0f, -12.3f),  
+    glm::vec3( 2.4f, -0.4f, -3.5f),  
+    glm::vec3(-1.7f,  3.0f, -7.5f),  
+    glm::vec3( 1.3f, -2.0f, -2.5f),  
+    glm::vec3( 1.5f,  2.0f, -2.5f), 
+    glm::vec3( 1.5f,  0.2f, -1.5f), 
+    glm::vec3(-1.3f,  1.0f, -1.5f)  
+};
+
+GLFWwindow* setUpAndCreateWindow(int width, int height) {
     if (!glfwInit()) {
         // initialization of GLFW failed
         cout << "Could not start GLFW\n";
@@ -51,7 +136,7 @@ GLFWwindow* setUpAndCreateWindow() {
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    GLFWwindow* window = glfwCreateWindow(1024, 1024, "Rubik's Cube Simulator", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, "Rubik's Cube Simulator", NULL, NULL);
     
 
 
@@ -98,8 +183,30 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     glEnableVertexAttribArray(1);
 }
 
+void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, float temp_angle) {
+    mat4 model = mat4(1.0f);
+    model = translate(model, model_translate);
+    model = rotate(model, radians(temp_angle), vec3(0.5f, 1.0f, 0.0f));
+
+    mat4 view = mat4(1.0f);
+    view = translate(view, vec3(0.0f, 0.0f, -3.0f));
+
+    mat4 projection;
+    projection = perspective(radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
+
+    // send to the shader
+    GLuint model_loc = glGetUniformLocation(program_id, "model");
+    glUniformMatrix4fv(model_loc, 1, GL_FALSE, value_ptr(model));
+    GLuint view_loc = glGetUniformLocation(program_id, "view");
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, value_ptr(view));
+    GLuint projection_loc = glGetUniformLocation(program_id, "projection");
+    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
+}
+
 int main() {
-    GLFWwindow *window = setUpAndCreateWindow();
+    int window_width = 800;
+    int window_height = 600;
+    GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
     cout << colors[0];
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
@@ -123,7 +230,7 @@ int main() {
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
     // Accept fragment if it closer to the camera than the former one
-    glDepthFunc(GL_LESS);
+    // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
         // clear the screen
@@ -140,7 +247,14 @@ int main() {
         glUniformMatrix4fv(transform_loc, 1, GL_FALSE, value_ptr(trans));
 
         // Draw the triangles
-        glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
+        // use glDrawElements if using the EBO, glDrawArrays if using just the entire vertices array
+        // glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
+        // for drawing 10 boxes that are the same but differ in position
+        // make a loop that renders 10 times with a different model matrix each time
+        for (int x = 0; x < 10; x++) {
+            setUpMVPMatrices(program_id, window_width, window_height, cubePositions[x], 20*x);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
 
         // swap buffers
         glfwSwapBuffers(window);
