@@ -14,6 +14,9 @@ using namespace glm;
 #include <glm/gtc/type_ptr.hpp>
 
 // TODO: make these be held in their own file for easy updating instead of sitting up here
+int window_width = 1024;
+int window_height = 1024;
+
 vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
 vec3 camera_front = vec3(0.0f, 0.0f, -1.0f);
 vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
@@ -22,8 +25,8 @@ vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
 bool first_mouse = true;
 float mouse_yaw   = -90.0f;	// mouse_yaw is initialized to -90.0 degrees since a mouse_yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
 float mouse_pitch =  0.0f;
-float lastX =  800.0f / 2.0;
-float lastY =  600.0 / 2.0;
+float lastX = window_width / 2.0;
+float lastY =  window_height / 2.0;
 float fov   =  45.0f;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
@@ -281,8 +284,6 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 }
 
 int main() {
-    int window_width = 800;
-    int window_height = 600;
     GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
@@ -332,7 +333,7 @@ int main() {
         // glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
         // for drawing 10 boxes that are the same but differ in position
         // make a loop that renders 10 times with a different model matrix each time
-        for (int x = 0; x < 10; x++) {
+        for (int x = 0; x < 1; x++) {
             setUpMVPMatrices(program_id, window_width, window_height, cubePositions[x], 20*x);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
