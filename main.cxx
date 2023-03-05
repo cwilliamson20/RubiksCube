@@ -14,6 +14,13 @@ using namespace glm;
 #include <glm/gtc/type_ptr.hpp>
 
 // TODO: make these be held in their own file for easy updating instead of sitting up here
+vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
+vec3 camera_front = vec3(0.0f, 0.0f, -1.0f);
+vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
+
+float delta_time = 0.0f;	// Time between current frame and last frame
+float last_frame = 0.0f; // Time of last frame
+
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,
      0.5f, -0.5f, -0.5f,
@@ -183,13 +190,33 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     glEnableVertexAttribArray(1);
 }
 
+void processInput(GLFWwindow *window)
+{
+    const float camera_speed = 2.5 * delta_time; // adjust accordingly
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
+        camera_pos += camera_speed * camera_front;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) 
+        camera_pos -= camera_speed * camera_front;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera_pos -= normalize(cross(camera_front, camera_up)) * camera_speed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera_pos += normalize(cross(camera_front, camera_up)) * camera_speed;
+
+    // cout << "cam speed = " << camera_speed << ", cam front = " << camera_front.x << camera_front.y << camera_front.z << "\n";
+    // cout << "cam pos = " << camera_pos.x << ", " << camera_pos.y << ", " << camera_pos.z << "\n";
+    // cout << "cam front = " << camera_front.x << ", " << camera_front.y << ", " << camera_front.z << "\n";
+    // cout << "cross = " << normalize(cross(camera_front, camera_up)).x << ", " << cross(camera_front, camera_up).y << ", " << cross(camera_front, camera_up).z << "\n";
+}
+
 void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, float temp_angle) {
     mat4 model = mat4(1.0f);
     model = translate(model, model_translate);
-    model = rotate(model, radians(temp_angle), vec3(0.5f, 1.0f, 0.0f));
+    model = rotate(model, radians(temp_angle), vec3(1.0f, 0.3f, 0.5f));
 
     mat4 view = mat4(1.0f);
-    view = translate(view, vec3(0.0f, 0.0f, -3.0f));
+    // view = translate(view, vec3(0.0f, 0.0f, -3.0f));
+    // use view to enable user camera movement
+    view = lookAt(camera_pos, camera_pos + camera_front, camera_up);
 
     mat4 projection;
     projection = perspective(radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
@@ -207,7 +234,6 @@ int main() {
     int window_width = 800;
     int window_height = 600;
     GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
-    cout << colors[0];
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
@@ -216,7 +242,7 @@ int main() {
     glGenVertexArrays(1, &vertex_array_ID);
     glBindVertexArray(vertex_array_ID);
 
-    GLuint program_id = LoadShaders("vertexshader.glsl", "fragmentshader.glsl" );
+    GLuint program_id = LoadShaders("vertexshader.glsl", "fragmentshader.glsl");
     // Use our shader
     glUseProgram(program_id);
 
@@ -233,19 +259,20 @@ int main() {
     // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
+        // calculate the delta time since the last frame
+        float current_frame = glfwGetTime();
+        delta_time = current_frame - last_frame;
+        last_frame = current_frame;
+
+        // process input
+        processInput(window);
+
         // clear the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindVertexArray(vertex_array_ID);
-
-        // transform the triangles
-        mat4 trans = mat4(1.0f);
-        trans = translate(trans, vec3(.5f, -.5f, 0.0f));
-        trans = rotate(trans, (float)glfwGetTime(), vec3(0.0f, 0.0f, 1.0f));
-        unsigned int transform_loc = glGetUniformLocation(program_id, "transform");
-        glUniformMatrix4fv(transform_loc, 1, GL_FALSE, value_ptr(trans));
-
+        
         // Draw the triangles
         // use glDrawElements if using the EBO, glDrawArrays if using just the entire vertices array
         // glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
