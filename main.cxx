@@ -6,17 +6,19 @@ using std::cout;
 #define GLFW_INCLUDE_NONE
 #include <GL/glew.h>    // include GLEW and new version of GL on Windows
 #include <GLFW/glfw3.h> // GLFW helper library
-// avoid having to use glm:: all the time
+// avoid having to use  all the time
 #include <glm/glm.hpp>
 using namespace glm;
 #include "shader.h"
-#include <glm/gtc/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
+#include <glm/gtc/matrix_transform.hpp>  // translate, rotate, scale
 #include <glm/gtc/type_ptr.hpp>
 
 // TODO: make these be held in their own file for easy updating instead of sitting up here
 vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
-vec3 camera_front = vec3(0.0f, 0.0f, -1.0f);
+vec3 camera_front = vec3(0.0f, 0.0f, 0.0f);
 vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
+float cam_rotation_angle = 0;
+float rotation_radius = 10.0f;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
@@ -118,17 +120,20 @@ float colors[] = {
     1.0f, 1.0f, 0.0,    // yellow
 };
 
-glm::vec3 cubePositions[] = {
-    glm::vec3( 0.0f,  0.0f,  0.0f), 
-    glm::vec3( 2.0f,  5.0f, -15.0f), 
-    glm::vec3(-1.5f, -2.2f, -2.5f),  
-    glm::vec3(-3.8f, -2.0f, -12.3f),  
-    glm::vec3( 2.4f, -0.4f, -3.5f),  
-    glm::vec3(-1.7f,  3.0f, -7.5f),  
-    glm::vec3( 1.3f, -2.0f, -2.5f),  
-    glm::vec3( 1.5f,  2.0f, -2.5f), 
-    glm::vec3( 1.5f,  0.2f, -1.5f), 
-    glm::vec3(-1.3f,  1.0f, -1.5f)  
+vec3 cubePositions[] = {
+    // height depth
+    // middle middle row
+    vec3(-1.0f,  0.0f,  0.0f), 
+    vec3( 0.0f,  0.0f,  0.0f), 
+    vec3( 1.0f,  0.0f,  0.0f), 
+    // bottom middle row 
+    vec3(-1.0f, -1.0f,  0.0f),   
+    vec3( 0.0f, -1.0f,  0.0f),   
+    vec3( 1.0f, -1.0f,  0.0f),  
+    // top middle row
+    vec3(-1.0f,  1.0f,  0.0f),  
+    vec3( 0.0f,  1.0f,  0.0f), 
+    vec3( 1.0f,  1.0f,  0.0f),  
 };
 
 GLFWwindow* setUpAndCreateWindow(int width, int height) {
@@ -193,30 +198,30 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
 void processInput(GLFWwindow *window)
 {
     const float camera_speed = 2.5 * delta_time; // adjust accordingly
+    // W is get closer, so shrink down rotation radius
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
-        camera_pos += camera_speed * camera_front;
+        rotation_radius -= camera_speed;
+    // get further away
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) 
-        camera_pos -= camera_speed * camera_front;
+        rotation_radius += camera_speed;
+    // rotate cube left to right
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera_pos -= normalize(cross(camera_front, camera_up)) * camera_speed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera_pos += normalize(cross(camera_front, camera_up)) * camera_speed;
-
-    // cout << "cam speed = " << camera_speed << ", cam front = " << camera_front.x << camera_front.y << camera_front.z << "\n";
-    // cout << "cam pos = " << camera_pos.x << ", " << camera_pos.y << ", " << camera_pos.z << "\n";
-    // cout << "cam front = " << camera_front.x << ", " << camera_front.y << ", " << camera_front.z << "\n";
-    // cout << "cross = " << normalize(cross(camera_front, camera_up)).x << ", " << cross(camera_front, camera_up).y << ", " << cross(camera_front, camera_up).z << "\n";
+        cam_rotation_angle -= camera_speed;
+    // rotate cube right to left
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        cam_rotation_angle += camera_speed;
+    }
 }
 
-void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, float temp_angle) {
+void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate) {
     mat4 model = mat4(1.0f);
     model = translate(model, model_translate);
-    model = rotate(model, radians(temp_angle), vec3(1.0f, 0.3f, 0.5f));
+    // model = rotate(model, radians(temp_angle), vec3(1.0f, 0.3f, 0.5f));
 
     mat4 view = mat4(1.0f);
-    // view = translate(view, vec3(0.0f, 0.0f, -3.0f));
     // use view to enable user camera movement
-    view = lookAt(camera_pos, camera_pos + camera_front, camera_up);
+    camera_pos = vec3(sin(cam_rotation_angle) * rotation_radius, 0.0, cos(cam_rotation_angle) * rotation_radius);
+    view = lookAt(camera_pos, camera_front, camera_up);
 
     mat4 projection;
     projection = perspective(radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
@@ -279,7 +284,7 @@ int main() {
         // for drawing 10 boxes that are the same but differ in position
         // make a loop that renders 10 times with a different model matrix each time
         for (int x = 0; x < 10; x++) {
-            setUpMVPMatrices(program_id, window_width, window_height, cubePositions[x], 20*x);
+            setUpMVPMatrices(program_id, window_width, window_height, cubePositions[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
