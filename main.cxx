@@ -19,6 +19,7 @@ vec3 camera_front = vec3(0.0f, 0.0f, 0.0f);
 vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
 float cam_rotation_angle = 0;
 float rotation_radius = 10.0f;
+float speed_coefficient = 2.5;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
@@ -197,7 +198,7 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
 
 void processInput(GLFWwindow *window)
 {
-    const float camera_speed = 2.5 * delta_time; // adjust accordingly
+    const float camera_speed = speed_coefficient * delta_time; // adjust accordingly
     // W is get closer, so shrink down rotation radius
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
         rotation_radius -= camera_speed;
@@ -208,9 +209,14 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         cam_rotation_angle -= camera_speed;
     // rotate cube right to left
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cam_rotation_angle += camera_speed;
-    }
+    // increase camera speed
+    if ((glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) 
+        speed_coefficient += delta_time;
+    // decrease camera speed
+    if ((glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) && speed_coefficient > delta_time) 
+        speed_coefficient -= delta_time;
 }
 
 void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate) {
