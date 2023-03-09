@@ -13,7 +13,6 @@ using namespace glm;
 #include <glm/gtc/matrix_transform.hpp>  // translate, rotate, scale
 #include <glm/gtc/type_ptr.hpp>
 
-// TODO: make these be held in their own file for easy updating instead of sitting up here
 vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
 vec3 camera_front = vec3(0.0f, 0.0f, 0.0f);
 vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
@@ -123,6 +122,23 @@ float colors[] = {
 
 vec3 cubePositions[] = {
     // height depth
+    // top front row
+    vec3(-1.0f,  1.0f,  1.0f),  
+    vec3( 0.0f,  1.0f,  1.0f), 
+    vec3( 1.0f,  1.0f,  1.0f), 
+    // middle front row
+    vec3(-1.0f,  0.0f,  1.0f), 
+    vec3( 0.0f,  0.0f,  1.0f), 
+    vec3( 1.0f,  0.0f,  1.0f), 
+    // bottom front row 
+    vec3(-1.0f, -1.0f,  1.0f),   
+    vec3( 0.0f, -1.0f,  1.0f),   
+    vec3( 1.0f, -1.0f,  1.0f), 
+    
+    // top middle row
+    vec3(-1.0f,  1.0f,  0.0f),  
+    vec3( 0.0f,  1.0f,  0.0f), 
+    vec3( 1.0f,  1.0f,  0.0f), 
     // middle middle row
     vec3(-1.0f,  0.0f,  0.0f), 
     vec3( 0.0f,  0.0f,  0.0f), 
@@ -130,11 +146,20 @@ vec3 cubePositions[] = {
     // bottom middle row 
     vec3(-1.0f, -1.0f,  0.0f),   
     vec3( 0.0f, -1.0f,  0.0f),   
-    vec3( 1.0f, -1.0f,  0.0f),  
-    // top middle row
-    vec3(-1.0f,  1.0f,  0.0f),  
-    vec3( 0.0f,  1.0f,  0.0f), 
-    vec3( 1.0f,  1.0f,  0.0f),  
+    vec3( 1.0f, -1.0f,  0.0f),    
+    
+    // top back row
+    vec3(-1.0f,  1.0f, -1.0f),  
+    vec3( 0.0f,  1.0f, -1.0f), 
+    vec3( 1.0f,  1.0f, -1.0f), 
+    // middle back row
+    vec3(-1.0f,  0.0f, -1.0f), 
+    vec3( 0.0f,  0.0f, -1.0f), 
+    vec3( 1.0f,  0.0f, -1.0f), 
+    // bottom back row 
+    vec3(-1.0f, -1.0f, -1.0f),   
+    vec3( 0.0f, -1.0f, -1.0f),   
+    vec3( 1.0f, -1.0f, -1.0f),     
 };
 
 GLFWwindow* setUpAndCreateWindow(int width, int height) {
@@ -241,6 +266,22 @@ void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_trans
     glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
 }
 
+class Cube {
+    // this is the blueprint for one cube on the rubik's cube out of 27 cubes
+    public:
+        int position;   // from 0 to 26, detailing which of the parts of the cube it is
+        float cube_colors[108];
+
+    Cube(int in_position) {
+        position = in_position;
+        if (position > 27 || position < 0) 
+            cout << "position value " << position << " is invalid.\n";     
+        // initialize all colors for all 36 vertices to 0
+        for (int x = 0; x < 108; x++) {
+            cube_colors[x] = 0.0;
+        }
+    }
+};
 int main() {
     int window_width = 800;
     int window_height = 600;
@@ -289,7 +330,7 @@ int main() {
         // glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
         // for drawing 10 boxes that are the same but differ in position
         // make a loop that renders 10 times with a different model matrix each time
-        for (int x = 0; x < 10; x++) {
+        for (int x = 0; x < 27; x++) {
             setUpMVPMatrices(program_id, window_width, window_height, cubePositions[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
