@@ -18,7 +18,7 @@ vec3 camera_front = vec3(0.0f, 0.0f, 0.0f);
 vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
 float cam_rotation_angle = 0;
 float rotation_radius = 10.0f;
-float speed_coefficient = 2.5;
+float speed_coefficient = 5.0;
 float cam_height = 0.0;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
@@ -68,13 +68,6 @@ float vertices[] = {
     -0.5f,  0.5f, -0.5f,  
 };
 
-int NUM_TRIANGLES = 1;  // update this to draw different numbers of triangles
-unsigned int indices[] = {  // note that we start from 0!
-    0, 4, 5,
-    0, 1, 3,   
-    1, 2, 3,    
-    0, 1, 4, 
-};  
 
 float colors[] = {
     1.0f, 0.0f, 0.0f,   // red
@@ -291,6 +284,18 @@ class Cube {
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(1);
     }
+
+    void setCubeSideColor(int side, float in_colors[]) {
+        // changes the color of one side of this cube
+        // 0 = front, 1 = back, 2 = left, 3 = right, 4 = top, 5 = bottom
+        // in_colors should be three long, r, g, b
+        int offset = side * 18;
+        for (int x = 0; x < 18; x+=3) {
+            cube_colors[x + offset] = in_colors[0];
+            cube_colors[x + offset + 1] = in_colors[1];
+            cube_colors[x + offset + 2] = in_colors[2]; 
+        }
+    }
 };
 int main() {
     int window_width = 800;
@@ -303,7 +308,6 @@ int main() {
     Cube cube_list[27];
     for (int x = 0; x < 27; x++) {
         cube_list[x].position = x;
-        // cube_list[x].setUpCubeBuffers();
     }
     // make the vao and set it as the current one
     GLuint vertex_array_ID;
@@ -341,9 +345,13 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindVertexArray(vertex_array_ID);
-        
+        // back, front, left, right, bottom, top
+        float temp_colors[] = {1.0, 0.0, 0.0};
+        for (int x = 0; x < 27; x++) {
+            cube_list[x].setCubeSideColor(1, temp_colors);
+        }
         // draw all of the cubes from the cube list
-        for (int x = 0; x < 15; x++) {
+        for (int x = 0; x < 27; x++) {
             cube_list[x].activateCubeColors();
             setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
