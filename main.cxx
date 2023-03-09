@@ -121,7 +121,8 @@ float colors[] = {
     1.0f, 1.0f, 0.0,    // yellow
 };
 
-vec3 cubePositions[] = {
+// index in array corresponds to the position held in the cube object
+vec3 cube_translates[] = {
     // height depth
     // top front row
     vec3(-1.0f,  1.0f,  1.0f),  
@@ -199,24 +200,17 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     // bind it to the array buffer
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     // give our vertices to OpenGL
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * 36, vertices, GL_STATIC_DRAW);
     // tell OpenGL how to look at this data when drawing
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
-
-    // store the indices of the triangles in an Element Buffer Object (EBO)
-    // which is basically a vertex buffer object that stores indices to decide what vertices to draw
-    glGenBuffers(1, &EBO);
-    // bind the EBO and copy the indices into the buffer
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-
     // store the colors of each vertex of the triangle
+    // starts as NULL because each cube will stream it's color data into it later
+    // https://www.khronos.org/opengl/wiki/Buffer_Object_Streaming
     glGenBuffers(1, &color_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * 36, NULL, GL_STATIC_DRAW);
     // tell OpenGL how to look at this data when drawing
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
@@ -246,6 +240,7 @@ void processInput(GLFWwindow *window)
     // raise camera up
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
         cam_height += camera_speed;
+    // lower camera down
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         cam_height -= camera_speed;
 }
@@ -276,16 +271,25 @@ class Cube {
     // this is the blueprint for one cube on the rubik's cube out of 27 cubes
     public:
         int position;   // from 0 to 26, detailing which of the parts of the cube it is
+        GLuint cube_vertex_buffer;
+        GLuint cube_color_buffer;
         float cube_colors[108];
 
-    Cube(int in_position) {
-        position = in_position;
-        if (position > 27 || position < 0) 
-            cout << "position value " << position << " is invalid.\n";     
+    Cube() {   
         // initialize all colors for all 36 vertices to 0
-        for (int x = 0; x < 108; x++) {
-            cube_colors[x] = 0.0;
+        for (int x = 0; x < 3 * 36; x++) {
+            cube_colors[x] = 0.5;
         }
+    }
+
+    void activateCubeColors() {
+        // binds this cube's colors as the active color VBO
+        glGenBuffers(1, &cube_color_buffer);
+        glBindBuffer(GL_ARRAY_BUFFER, cube_color_buffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * 36, cube_colors, GL_STATIC_DRAW);
+        // tell OpenGL how to look at this data when drawing
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+        glEnableVertexAttribArray(1);
     }
 };
 int main() {
@@ -294,7 +298,13 @@ int main() {
     GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-
+    
+    // make 27 cube objects for the 27 parts of the overall rubik's cube
+    Cube cube_list[27];
+    for (int x = 0; x < 27; x++) {
+        cube_list[x].position = x;
+        // cube_list[x].setUpCubeBuffers();
+    }
     // make the vao and set it as the current one
     GLuint vertex_array_ID;
     glGenVertexArrays(1, &vertex_array_ID);
@@ -313,6 +323,7 @@ int main() {
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
+
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
@@ -331,13 +342,10 @@ int main() {
 
         glBindVertexArray(vertex_array_ID);
         
-        // Draw the triangles
-        // use glDrawElements if using the EBO, glDrawArrays if using just the entire vertices array
-        // glDrawElements(GL_TRIANGLES, NUM_TRIANGLES * 3, GL_UNSIGNED_INT, 0);
-        // for drawing 10 boxes that are the same but differ in position
-        // make a loop that renders 10 times with a different model matrix each time
-        for (int x = 0; x < 27; x++) {
-            setUpMVPMatrices(program_id, window_width, window_height, cubePositions[x]);
+        // draw all of the cubes from the cube list
+        for (int x = 0; x < 15; x++) {
+            cube_list[x].activateCubeColors();
+            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
@@ -345,12 +353,6 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // clean up VBO and shaders
-    glDeleteBuffers(1, &vertex_buffer);
-    glDeleteProgram(program_id);
-    glDeleteVertexArrays(1, &vertex_array_ID);
-
     glfwDestroyWindow(window);
     glfwTerminate();
 }
