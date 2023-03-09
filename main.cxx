@@ -19,6 +19,7 @@ vec3 camera_up = vec3(0.0f, 1.0f, 0.0f);
 float cam_rotation_angle = 0;
 float rotation_radius = 10.0f;
 float speed_coefficient = 2.5;
+float cam_height = 0.0;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
@@ -242,6 +243,11 @@ void processInput(GLFWwindow *window)
     // decrease camera speed
     if ((glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) && speed_coefficient > delta_time) 
         speed_coefficient -= delta_time;
+    // raise camera up
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
+        cam_height += camera_speed;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        cam_height -= camera_speed;
 }
 
 void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate) {
@@ -251,7 +257,7 @@ void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_trans
 
     mat4 view = mat4(1.0f);
     // use view to enable user camera movement
-    camera_pos = vec3(sin(cam_rotation_angle) * rotation_radius, 0.0, cos(cam_rotation_angle) * rotation_radius);
+    camera_pos = vec3(sin(cam_rotation_angle) * rotation_radius, cam_height, cos(cam_rotation_angle) * rotation_radius);
     view = lookAt(camera_pos, camera_front, camera_up);
 
     mat4 projection;
