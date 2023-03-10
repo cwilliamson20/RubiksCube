@@ -297,6 +297,20 @@ class Cube {
         }
     }
 };
+
+class CubeList {
+    // class to contain the 27 cubes and make doing operations on all of them easier
+    public:
+        Cube cubes[27];
+    
+    CubeList() {
+        // set up position values for each cube
+        for (int x = 0; x < 27; x++) {
+            cubes[x].position = x;
+        }
+    }
+};
+
 int main() {
     int window_width = 800;
     int window_height = 600;
@@ -305,10 +319,8 @@ int main() {
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     
     // make 27 cube objects for the 27 parts of the overall rubik's cube
-    Cube cube_list[27];
-    for (int x = 0; x < 27; x++) {
-        cube_list[x].position = x;
-    }
+    CubeList cube_list;
+
     // make the vao and set it as the current one
     GLuint vertex_array_ID;
     glGenVertexArrays(1, &vertex_array_ID);
@@ -348,11 +360,11 @@ int main() {
         // back, front, left, right, bottom, top
         float temp_colors[] = {1.0, 0.0, 0.0};
         for (int x = 0; x < 27; x++) {
-            cube_list[x].setCubeSideColor(1, temp_colors);
+            cube_list.cubes[x].setCubeSideColor(1, temp_colors);
         }
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
-            cube_list[x].activateCubeColors();
+            cube_list.cubes[x].activateCubeColors();
             setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -364,3 +376,6 @@ int main() {
     glfwDestroyWindow(window);
     glfwTerminate();
 }
+
+// TODO: make a cube_list class instead of always referencing the regular list
+// TODO: figure out rotation of one side of the cube
