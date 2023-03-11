@@ -285,28 +285,64 @@ class Cube {
         glEnableVertexAttribArray(1);
     }
 
-    void setCubeSideColor(int side, float in_colors[]) {
+    void setCubeSideColor(int side, float r, float g, float b) {
         // changes the color of one side of this cube
         // 0 = front, 1 = back, 2 = left, 3 = right, 4 = top, 5 = bottom
         // in_colors should be three long, r, g, b
         int offset = side * 18;
         for (int x = 0; x < 18; x+=3) {
-            cube_colors[x + offset] = in_colors[0];
-            cube_colors[x + offset + 1] = in_colors[1];
-            cube_colors[x + offset + 2] = in_colors[2]; 
+            cube_colors[x + offset] = r / 255;
+            cube_colors[x + offset + 1] = g / 255;
+            cube_colors[x + offset + 2] = b / 255; 
+        }
+    }
+
+    void printCubeInfo() {
+        // prints the current value of this cube for debugging
+        cout << "position = " << position << "\n";
+        cout << "cube_colors = \n";
+        for (int side = 0; side < 6; side++) {
+            cout << "side " << side << ": ";
+            for (int x = 0; x < 18; x+=3) {
+                cout << "(";
+                cout << (int) (cube_colors[x + (side * 18)] * 255) << " "; 
+                cout << (int) (cube_colors[x + (side * 18) + 1] * 255) << " "; 
+                cout << (int) (cube_colors[x + (side * 18) + 2] * 255);
+                cout << ") ";
+            }
+            cout << "\n";
         }
     }
 };
 
 class CubeList {
-    // class to contain the 27 cubes and make doing operations on all of them easier
+    // class to contain the cubes and make doing operations on all of them easier
     public:
+        int num_cubes = 27;
         Cube cubes[27];
     
     CubeList() {
         // set up position values for each cube
         for (int x = 0; x < 27; x++) {
             cubes[x].position = x;
+        }
+    }
+
+    void setAllCubeSideColor(int side, float r, float g, float b) {
+        // sets all the cubes in the cube list's side number to the rgb value
+        // index:   0     1      2    3       4      5
+        // side:  back, front, left, right, bottom, top
+        for (int x = 0; x < num_cubes; x++) {
+            cubes[x].setCubeSideColor(side, r, g, b);
+        }
+    }
+
+    void changeColorPallete(float in_colors[]) {
+        // takes in a list of 18 floats an applies that color scheme to the cube
+        cout << in_colors[0] << " " << in_colors[1] << " " << in_colors[2] << "\n";
+        for (int x = 0; x < 18; x+= 3) {
+            cout << x << "\n";
+            setAllCubeSideColor(x / 3, in_colors[x], in_colors[x + 1], in_colors[x + 2]);
         }
     }
 };
@@ -340,6 +376,19 @@ int main() {
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
+    // set up initial default color pallete
+    // back, front, left, right, bottom, top
+    float default_colors[] = {
+        255.0,  133.0,  2.0,    // back = orange
+        255.0,  0.0,    0.0,    // front = red
+        0.0,    0.0,  255.0,    // left = blue
+        0.0,    255.0,  0.0,    // right = green
+        255.0,  255.0,255.0,    // bottom = white
+        255.0,  255.0,  0.0,    // top = yellow
+    };
+
+    cube_list.changeColorPallete(default_colors);
+
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
@@ -357,11 +406,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindVertexArray(vertex_array_ID);
-        // back, front, left, right, bottom, top
-        float temp_colors[] = {1.0, 0.0, 0.0};
-        for (int x = 0; x < 27; x++) {
-            cube_list.cubes[x].setCubeSideColor(1, temp_colors);
-        }
+
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
@@ -377,5 +422,4 @@ int main() {
     glfwTerminate();
 }
 
-// TODO: make a cube_list class instead of always referencing the regular list
 // TODO: figure out rotation of one side of the cube
