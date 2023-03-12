@@ -12,6 +12,8 @@ using namespace glm;
 #include "shader.h"
 #include <glm/gtc/matrix_transform.hpp>  // translate, rotate, scale
 #include <glm/gtc/type_ptr.hpp>
+#include <unistd.h>
+
 
 vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
 vec3 camera_front = vec3(0.0f, 0.0f, 0.0f);
@@ -23,6 +25,8 @@ float cam_height = 0.0;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
+float frames_per_second = 60.0;
+float start_time = glfwGetTime();
 
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,
@@ -238,10 +242,50 @@ void processInput(GLFWwindow *window)
         cam_height -= camera_speed;
 }
 
-void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate) {
+mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
+    // takes in the model for an individual cube and returns the model matrix
+    // that will put it in the right spot if it's currently being rotated
+    if (!is_rotating || rotation_angle == 0.0) return in_model;
+
+    // basic idea is to translate to the center of rotation (center of side that is rotating)
+    // rotate, then translate back to original position
+    // translate needs to be different for each block
+    vec3 center_translate = vec3(0.0f, 0.0f, 0.0f);
+    // closest to front, top to bottom
+    if (start_position == 2)
+        center_translate = vec3(0.0f, -1.0f, -1.0f);
+    if (start_position == 5)
+        center_translate = vec3(0.0f, 0.0f, -1.0f);
+    if (start_position == 8)
+        center_translate = vec3(0.0f, 1.0f, -1.0f);
+    // middle to camera
+    if (start_position == 11)
+        center_translate = vec3(0.0f, -1.0f, 0.0f);
+    if (start_position == 14)
+        center_translate = vec3(0.0f, 0.0f, 0.0f);
+    if (start_position == 17)
+        center_translate = vec3(0.0f, 1.0f, 0.0f);
+    // farthest from camera
+    if (start_position == 20)
+        center_translate = vec3(0.0f, -1.0f, 1.0f);
+    if (start_position == 23)
+        center_translate = vec3(0.0f, 0.0f, 1.0f);
+    if (start_position == 26)
+        center_translate = vec3(0.0f, 1.0f, 1.0f);
+
+
+    if (start_position % 3 == 2) {
+    in_model = translate(in_model, center_translate);
+    in_model = rotate(in_model, rotation_angle, vec3(1.0, 0.0, 0.0));
+    center_translate *= -1;
+    in_model = translate(in_model, center_translate);
+    }
+    return in_model;
+}
+void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, float rotation_angle, int index) {
     mat4 model = mat4(1.0f);
     model = translate(model, model_translate);
-    // model = rotate(model, radians(temp_angle), vec3(1.0f, 0.3f, 0.5f));
+    model = generateRotationModelMatrix(model, true, index, rotation_angle);
 
     mat4 view = mat4(1.0f);
     // use view to enable user camera movement
@@ -345,6 +389,15 @@ class CubeList {
             setAllCubeSideColor(x / 3, in_colors[x], in_colors[x + 1], in_colors[x + 2]);
         }
     }
+
+    void rotateSide() {
+        // does an R rotation on the cube from the original camera position
+        // cube positions to work on: 2, 5, 8, 11, 14, 17, 20, 23, 26
+        // idea: rotate around the center of the middle right cube 
+        // translate to that position, rotate, then reverse the translate
+        
+        return;
+    }
 };
 
 int main() {
@@ -389,14 +442,21 @@ int main() {
 
     cube_list.changeColorPallete(default_colors);
 
+
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
+    int temp_rotation_angle = 0;
+    int num_frames = 0;
+    float end_time;
+    float frame_start_time, frame_end_time;
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
+        frame_start_time = glfwGetTime();
         // calculate the delta time since the last frame
         float current_frame = glfwGetTime();
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
+        temp_rotation_angle += 1;
 
         // process input
         processInput(window);
@@ -410,16 +470,33 @@ int main() {
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
-            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x]);
+            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x], temp_rotation_angle, cube_list.cubes[x].position);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
         // swap buffers
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        // this code caps the framerate at the global variable frames_per_second
+        frame_end_time = glfwGetTime();
+        float change = frame_end_time - frame_start_time;
+
+        if (change < 1 / frames_per_second) {
+            cout << "slept " << ((1 / frames_per_second) - change) << "\n";
+            usleep(((1 / frames_per_second) - change) * 1000000);
+        }
+        num_frames ++;
+        end_time = glfwGetTime();
+
     }
+
+    cout << "total time = " << end_time - start_time << "\n";
+    cout << "total number of frames = " << num_frames << "\n";
     glfwDestroyWindow(window);
     glfwTerminate();
 }
 
 // TODO: figure out rotation of one side of the cube
+// TODO: make non visible sides of cubes gray so that opposite color doesn't show mid turn
+// TODO: make sure that use of sleep function will actually function on all OS's https://www.geeksforgeeks.org/sleep-function-in-cpp/
