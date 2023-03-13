@@ -161,6 +161,39 @@ vec3 cube_translates[] = {
     vec3( 1.0f, -1.0f, -1.0f),     
 };
 
+class RotationStatus {
+    public:
+        bool is_rotating;   // true if there is a rotation in progress, false otherwise
+        // index:   0     1      2    3       4      5
+        // side:  back, front, left, right, bottom, top
+        int rotation_side;  // which side of the cube is being rotated?
+        float cur_angle;    // the angle at which the rotating side should be at (in RADIANS)
+        int rotation_start_frame;   // the frame this rotation started at
+        int frames_per_rotation;    // how many frames should a rotation be? By default set to about 1 second
+
+    RotationStatus(bool r, int r_s, int start_frame) {
+        is_rotating = r;
+        rotation_side = r_s;
+        cur_angle = 0.0f;
+        rotation_start_frame = start_frame;
+        frames_per_rotation = frames_per_second;
+    }
+
+    void update_rotation(int cur_frame) {
+        // updates the rotation values based on how many frames have passed since the rotation started
+        
+        // check if the current rotation should be finished
+        if (cur_frame - rotation_start_frame >= frames_per_rotation) {
+            // finish the rotation and set this side into the final position
+            // TODO: change this to actually change the position values for the cubes? This won't be permanent once is_rotating is false
+            cur_angle = radians(-90.0f);
+            return;
+        }
+        cur_angle -= radians((float)1 / frames_per_rotation * 90.0f);
+        // cout << "cur_angle = " << cur_angle << "\n";
+    }
+};
+
 GLFWwindow* setUpAndCreateWindow(int width, int height) {
     if (!glfwInit()) {
         // initialization of GLFW failed
@@ -282,10 +315,10 @@ mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_posi
     }
     return in_model;
 }
-void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, float rotation_angle, int index) {
+void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, RotationStatus rs, int index) {
     mat4 model = mat4(1.0f);
     model = translate(model, model_translate);
-    model = generateRotationModelMatrix(model, true, index, rotation_angle);
+    model = generateRotationModelMatrix(model, true, index, rs.cur_angle);
 
     mat4 view = mat4(1.0f);
     // use view to enable user camera movement
@@ -395,6 +428,10 @@ class CubeList {
         // cube positions to work on: 2, 5, 8, 11, 14, 17, 20, 23, 26
         // idea: rotate around the center of the middle right cube 
         // translate to that position, rotate, then reverse the translate
+
+        // want a rotation to take one second, which means we have frames_per_second to move it
+        // between start position and end position
+
         
         return;
     }
@@ -442,21 +479,21 @@ int main() {
 
     cube_list.changeColorPallete(default_colors);
 
+    // set up rotation status tracker
+    RotationStatus rs(false, -1, 0);
 
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
-    int temp_rotation_angle = 0;
     int num_frames = 0;
     float end_time;
-    float frame_start_time, frame_end_time;
+    float frame_start_time = glfwGetTime();
+    float frame_end_time;
     while (!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS) {
-        frame_start_time = glfwGetTime();
         // calculate the delta time since the last frame
         float current_frame = glfwGetTime();
         delta_time = current_frame - last_frame;
         last_frame = current_frame;
-        temp_rotation_angle += 1;
 
         // process input
         processInput(window);
@@ -470,9 +507,12 @@ int main() {
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
-            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x], temp_rotation_angle, cube_list.cubes[x].position);
+            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x], rs, cube_list.cubes[x].position);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
+
+        // update the rotation status
+        rs.update_rotation(num_frames);
 
         // swap buffers
         glfwSwapBuffers(window);
@@ -483,12 +523,11 @@ int main() {
         float change = frame_end_time - frame_start_time;
 
         if (change < 1 / frames_per_second) {
-            cout << "slept " << ((1 / frames_per_second) - change) << "\n";
             usleep(((1 / frames_per_second) - change) * 1000000);
         }
         num_frames ++;
         end_time = glfwGetTime();
-
+        frame_start_time = glfwGetTime();
     }
 
     cout << "total time = " << end_time - start_time << "\n";
