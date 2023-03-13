@@ -171,27 +171,28 @@ class RotationStatus {
         int rotation_start_frame;   // the frame this rotation started at
         int frames_per_rotation;    // how many frames should a rotation be? By default set to about 1 second
 
-    RotationStatus(bool r, int r_s, int start_frame) {
-        is_rotating = r;
-        rotation_side = r_s;
+    RotationStatus() {
+        is_rotating = false;
+        rotation_side = -1;
         cur_angle = 0.0f;
-        rotation_start_frame = start_frame;
+        rotation_start_frame = 0;
         frames_per_rotation = frames_per_second;
     }
 
     void update_rotation(int cur_frame) {
         // updates the rotation values based on how many frames have passed since the rotation started
-        
         // check if the current rotation should be finished
         if (cur_frame - rotation_start_frame >= frames_per_rotation) {
             // finish the rotation and set this side into the final position
             // TODO: change this to actually change the position values for the cubes? This won't be permanent once is_rotating is false
             cur_angle = radians(-90.0f);
-            return;
+            is_rotating = false;
+        } else {
+            is_rotating = true;
+            cur_angle -= radians((float)1 / frames_per_rotation * 90.0f);
         }
-        cur_angle -= radians((float)1 / frames_per_rotation * 90.0f);
-        // cout << "cur_angle = " << cur_angle << "\n";
     }
+
 };
 
 GLFWwindow* setUpAndCreateWindow(int width, int height) {
@@ -397,7 +398,8 @@ class CubeList {
     public:
         int num_cubes = 27;
         Cube cubes[27];
-    
+        RotationStatus rs;    // keeps track of current rotations and actually moves cubes around after rotation animation
+
     CubeList() {
         // set up position values for each cube
         for (int x = 0; x < 27; x++) {
@@ -423,15 +425,36 @@ class CubeList {
         }
     }
 
-    void rotateSide() {
+    void swapPositions(int index1, int index2) {
+        // swaps the cube objects at indices index1 and index2 in cubes[]
+        Cube temp_cube = cubes[index1];
+        cubes[index1] = cubes[index2];
+        cubes[index2] = temp_cube; 
+    }
+
+    void rotateSide(int cur_frame) {
         // does an R rotation on the cube from the original camera position
         // cube positions to work on: 2, 5, 8, 11, 14, 17, 20, 23, 26
         // idea: rotate around the center of the middle right cube 
         // translate to that position, rotate, then reverse the translate
+        rs.update_rotation(cur_frame);
 
-        // want a rotation to take one second, which means we have frames_per_second to move it
-        // between start position and end position
+        if (rs.is_rotating == false && rs.cur_angle != 0.0) {
+            // the rotation just finished
+            // need to actually change the positions so the rotation is permanent
+            // TODO: figure out what I want positions to actually be
+            cubes[2].position = 20;
+            cubes[5].position = 11;
+            cubes[8].position = 2;
+            cubes[11].position = 23;
+            cubes[14].position = 14;
+            cubes[17].position = 5;
+            cubes[20].position = 26;
+            cubes[23].position = 17;
+            cubes[26].position = 8;
 
+            cubes[23].printCubeInfo();
+        }
         
         return;
     }
@@ -479,9 +502,6 @@ int main() {
 
     cube_list.changeColorPallete(default_colors);
 
-    // set up rotation status tracker
-    RotationStatus rs(false, -1, 0);
-
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
     // window will close with alt + F4, X button, or escape key
@@ -507,12 +527,12 @@ int main() {
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
-            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x], rs, cube_list.cubes[x].position);
+            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x], cube_list.rs, cube_list.cubes[x].position);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
         // update the rotation status
-        rs.update_rotation(num_frames);
+        cube_list.rotateSide(num_frames);
 
         // swap buffers
         glfwSwapBuffers(window);
