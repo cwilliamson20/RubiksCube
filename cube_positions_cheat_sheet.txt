@@ -1,3 +1,7 @@
+Cube Side Indices:
+index:   0     1      2    3       4      5
+side:  back, front, left, right, bottom, top
+
 Front Layer:
 0   1   2
 3   4   5  

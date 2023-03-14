@@ -73,52 +73,7 @@ float vertices[] = {
 };
 
 
-float colors[] = {
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-    1.0f, 0.0f, 0.0f,   // red
-    0.0f, 1.0f, 0.0f,   // green
-    0.0f, 0.0f, 1.0,    // blue
-    1.0f, 0.0f, 1.0,    // purple
-    1.0f, 1.0f, 1.0,    // white
-    1.0f, 1.0f, 0.0,    // yellow
-};
-
-// index in array corresponds to the position held in the cube object
+// index in array corresponds to the cur_position held in the cube object
 vec3 cube_translates[] = {
     // height depth
     // top front row
@@ -164,6 +119,7 @@ vec3 cube_translates[] = {
 class RotationStatus {
     public:
         bool is_rotating;   // true if there is a rotation in progress, false otherwise
+        bool just_finished_rotation;
         // index:   0     1      2    3       4      5
         // side:  back, front, left, right, bottom, top
         int rotation_side;  // which side of the cube is being rotated?
@@ -173,6 +129,7 @@ class RotationStatus {
 
     RotationStatus() {
         is_rotating = false;
+        just_finished_rotation = false;
         rotation_side = -1;
         cur_angle = 0.0f;
         rotation_start_frame = 0;
@@ -182,12 +139,13 @@ class RotationStatus {
     void update_rotation(int cur_frame) {
         // updates the rotation values based on how many frames have passed since the rotation started
         // check if the current rotation should be finished
-        if (cur_frame - rotation_start_frame >= frames_per_rotation) {
-            // finish the rotation and set this side into the final position
-            // TODO: change this to actually change the position values for the cubes? This won't be permanent once is_rotating is false
-            cur_angle = radians(-90.0f);
+        if (cur_frame - rotation_start_frame == frames_per_rotation) {
+            // finish the rotation and set this side into the final cur_position
+            // TODO: change this to actually change the cur_position values for the cubes? This won't be permanent once is_rotating is false
+            cur_angle = 0.0f;
             is_rotating = false;
-        } else {
+            just_finished_rotation = true;
+        } else if (cur_frame - rotation_start_frame < frames_per_rotation) {
             is_rotating = true;
             cur_angle -= radians((float)1 / frames_per_rotation * 90.0f);
         }
@@ -282,7 +240,7 @@ mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_posi
     if (!is_rotating || rotation_angle == 0.0) return in_model;
 
     // basic idea is to translate to the center of rotation (center of side that is rotating)
-    // rotate, then translate back to original position
+    // rotate, then translate back to original cur_position
     // translate needs to be different for each block
     vec3 center_translate = vec3(0.0f, 0.0f, 0.0f);
     // closest to front, top to bottom
@@ -341,7 +299,8 @@ void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_trans
 class Cube {
     // this is the blueprint for one cube on the rubik's cube out of 27 cubes
     public:
-        int position;   // from 0 to 26, detailing which of the parts of the cube it is
+        int cur_position;   // from 0 to 26, detailing which of the parts of the cube it is
+        int start_position;
         GLuint cube_vertex_buffer;
         GLuint cube_color_buffer;
         float cube_colors[108];
@@ -349,7 +308,7 @@ class Cube {
     Cube() {   
         // initialize all colors for all 36 vertices to 0
         for (int x = 0; x < 3 * 36; x++) {
-            cube_colors[x] = 0.5;
+            cube_colors[x] = 0.0;
         }
     }
 
@@ -377,7 +336,7 @@ class Cube {
 
     void printCubeInfo() {
         // prints the current value of this cube for debugging
-        cout << "position = " << position << "\n";
+        cout << "cur_position = " << cur_position << "\n";
         cout << "cube_colors = \n";
         for (int side = 0; side < 6; side++) {
             cout << "side " << side << ": ";
@@ -391,6 +350,54 @@ class Cube {
             cout << "\n";
         }
     }
+
+    void rotateCubeColorsRight(int right_times) {
+        // rotates all the colors on the cube right_times left to right
+        // make right rotations as if spinning this cube clockwise 
+        for (int x = 0; x < right_times % 4; x++) {
+            float cur_colors[] = {
+                    cube_colors[18], cube_colors[19], cube_colors[20],      // original front colors
+                    cube_colors[36], cube_colors[37], cube_colors[38],      // original left colors
+                    cube_colors[0], cube_colors[1], cube_colors[2],         // original back colors
+                    cube_colors[54], cube_colors[55], cube_colors[56],      // original right colors
+            };
+
+            // multiply all by 255 because colors are stored 0 to 1 but change color function takes in 0 to 255
+            for (int x = 0; x < 12; x++) {
+                cur_colors[x] *= 255.0f;
+            }
+
+            // change cube_colors to have rotated around by one clockwise
+            setCubeSideColor(1, cur_colors[9], cur_colors[10], cur_colors[11]);  // set front to right
+            setCubeSideColor(2, cur_colors[0], cur_colors[1], cur_colors[2]);    // set left to front
+            setCubeSideColor(0, cur_colors[3], cur_colors[4], cur_colors[5]);    // set back to left
+            setCubeSideColor(3, cur_colors[6], cur_colors[7], cur_colors[8]);    // set right to back
+        } 
+    }
+
+    void rotateCubeColorsDown(int down_times) {
+        // rotates all the colors on the cube down_times down
+        // make down rotations as if top color comes towards the camera (clockwise if viewed from the right side)
+        for (int x = 0; x < down_times % 4; x++) {
+            float cur_colors[] = {
+                    cube_colors[18], cube_colors[19], cube_colors[20],      // original front colors
+                    cube_colors[72], cube_colors[73], cube_colors[74],      // original bottom colors
+                    cube_colors[0], cube_colors[1], cube_colors[2],         // original back colors
+                    cube_colors[90], cube_colors[91], cube_colors[92],      // original top colors
+            };
+
+            // multiply all by 255 because colors are stored 0 to 1 but change color function takes in 0 to 255
+            for (int x = 0; x < 12; x++) {
+                cur_colors[x] *= 255.0f;
+            }
+
+            // change cube_colors to have rotated around by one clockwise
+            setCubeSideColor(1, cur_colors[9], cur_colors[10], cur_colors[11]);  // set front to top
+            setCubeSideColor(4, cur_colors[0], cur_colors[1], cur_colors[2]);    // set bottom to front
+            setCubeSideColor(0, cur_colors[3], cur_colors[4], cur_colors[5]);    // set back to bottom
+            setCubeSideColor(5, cur_colors[6], cur_colors[7], cur_colors[8]);    // set top to back
+        } 
+    }
 };
 
 class CubeList {
@@ -401,9 +408,10 @@ class CubeList {
         RotationStatus rs;    // keeps track of current rotations and actually moves cubes around after rotation animation
 
     CubeList() {
-        // set up position values for each cube
+        // set up cur_position and start_position values for each cube
         for (int x = 0; x < 27; x++) {
-            cubes[x].position = x;
+            cubes[x].cur_position = x;
+            cubes[x].start_position = x;
         }
     }
 
@@ -418,9 +426,7 @@ class CubeList {
 
     void changeColorPallete(float in_colors[]) {
         // takes in a list of 18 floats an applies that color scheme to the cube
-        cout << in_colors[0] << " " << in_colors[1] << " " << in_colors[2] << "\n";
         for (int x = 0; x < 18; x+= 3) {
-            cout << x << "\n";
             setAllCubeSideColor(x / 3, in_colors[x], in_colors[x + 1], in_colors[x + 2]);
         }
     }
@@ -433,27 +439,33 @@ class CubeList {
     }
 
     void rotateSide(int cur_frame) {
-        // does an R rotation on the cube from the original camera position
+        // does an R rotation on the cube from the original camera cur_position
         // cube positions to work on: 2, 5, 8, 11, 14, 17, 20, 23, 26
         // idea: rotate around the center of the middle right cube 
-        // translate to that position, rotate, then reverse the translate
+        // translate to that cur_position, rotate, then reverse the translate
         rs.update_rotation(cur_frame);
 
-        if (rs.is_rotating == false && rs.cur_angle != 0.0) {
+        if (rs.just_finished_rotation == true) {
+            cout  << "INSIDE\n";
             // the rotation just finished
             // need to actually change the positions so the rotation is permanent
             // TODO: figure out what I want positions to actually be
-            cubes[2].position = 20;
-            cubes[5].position = 11;
-            cubes[8].position = 2;
-            cubes[11].position = 23;
-            cubes[14].position = 14;
-            cubes[17].position = 5;
-            cubes[20].position = 26;
-            cubes[23].position = 17;
-            cubes[26].position = 8;
+            cubes[2].cur_position = 20;
+            cubes[5].cur_position = 11;
+            cubes[8].cur_position = 2;
+            cubes[11].cur_position = 23;
+            cubes[14].cur_position = 14;
+            cubes[17].cur_position = 5;
+            cubes[20].cur_position = 26;
+            cubes[23].cur_position = 17;
+            cubes[26].cur_position = 8;
 
-            cubes[23].printCubeInfo();
+            // rotate the cube colors permanently
+            rs.cur_angle = 0.0f;
+            for (int x = 2; x < 27; x+=3) {
+                cubes[x].rotateCubeColorsDown(3);
+            }
+            rs.just_finished_rotation = false;
         }
         
         return;
@@ -527,7 +539,7 @@ int main() {
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
-            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[x], cube_list.rs, cube_list.cubes[x].position);
+            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[cube_list.cubes[x].cur_position], cube_list.rs, cube_list.cubes[x].cur_position);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
@@ -550,6 +562,7 @@ int main() {
         frame_start_time = glfwGetTime();
     }
 
+    
     cout << "total time = " << end_time - start_time << "\n";
     cout << "total number of frames = " << num_frames << "\n";
     glfwDestroyWindow(window);
