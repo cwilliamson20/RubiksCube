@@ -136,19 +136,24 @@ class RotationStatus {
         frames_per_rotation = frames_per_second;
     }
 
-    void update_rotation(int cur_frame) {
+    bool update_rotation(int cur_frame) {
         // updates the rotation values based on how many frames have passed since the rotation started
         // check if the current rotation should be finished
+        if (!is_rotating) {
+            return false;
+        }
         if (cur_frame - rotation_start_frame == frames_per_rotation) {
             // finish the rotation and set this side into the final cur_position
-            // TODO: change this to actually change the cur_position values for the cubes? This won't be permanent once is_rotating is false
-            cur_angle = 0.0f;
             is_rotating = false;
             just_finished_rotation = true;
+            // cout << "just finished the rotation on frame " << cur_frame << "\n";
+            return true;
         } else if (cur_frame - rotation_start_frame < frames_per_rotation) {
             is_rotating = true;
             cur_angle -= radians((float)1 / frames_per_rotation * 90.0f);
+            // cout << "in update_rotation, cur_frame = " << cur_frame << "\n";
         }
+        return false;
     }
 
 };
@@ -205,34 +210,7 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     glEnableVertexAttribArray(1);
 }
 
-void processInput(GLFWwindow *window)
-{
-    const float camera_speed = speed_coefficient * delta_time; // adjust accordingly
-    // W is get closer, so shrink down rotation radius
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
-        rotation_radius -= camera_speed;
-    // get further away
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) 
-        rotation_radius += camera_speed;
-    // rotate cube left to right
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cam_rotation_angle -= camera_speed;
-    // rotate cube right to left
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cam_rotation_angle += camera_speed;
-    // increase camera speed
-    if ((glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) 
-        speed_coefficient += delta_time;
-    // decrease camera speed
-    if ((glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) && speed_coefficient > delta_time) 
-        speed_coefficient -= delta_time;
-    // raise camera up
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
-        cam_height += camera_speed;
-    // lower camera down
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        cam_height -= camera_speed;
-}
+
 
 mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
     // takes in the model for an individual cube and returns the model matrix
@@ -443,13 +421,12 @@ class CubeList {
         // cube positions to work on: 2, 5, 8, 11, 14, 17, 20, 23, 26
         // idea: rotate around the center of the middle right cube 
         // translate to that cur_position, rotate, then reverse the translate
-        rs.update_rotation(cur_frame);
+        rs.is_rotating = true;
+        rs.rotation_start_frame = cur_frame;
+        return;
+    }
 
-        if (rs.just_finished_rotation == true) {
-            cout  << "INSIDE\n";
-            // the rotation just finished
-            // need to actually change the positions so the rotation is permanent
-            // TODO: figure out what I want positions to actually be
+    void finishSideRotation() {
             cubes[2].cur_position = 20;
             cubes[5].cur_position = 11;
             cubes[8].cur_position = 2;
@@ -459,16 +436,42 @@ class CubeList {
             cubes[20].cur_position = 26;
             cubes[23].cur_position = 17;
             cubes[26].cur_position = 8;
-
-            // rotate the cube colors permanently
-            rs.cur_angle = 0.0f;
-            for (int x = 2; x < 27; x+=3) {
-                cubes[x].rotateCubeColorsDown(3);
-            }
             rs.just_finished_rotation = false;
+    }
+
+    void processInput(GLFWwindow *window, int cur_frame) {
+        const float camera_speed = speed_coefficient * delta_time; // adjust accordingly
+        // W is get closer, so shrink down rotation radius
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
+            rotation_radius -= camera_speed;
+        // get further away
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) 
+            rotation_radius += camera_speed;
+        // rotate cube left to right
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            cam_rotation_angle -= camera_speed;
+        // rotate cube right to left
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            cam_rotation_angle += camera_speed;
+        // increase camera speed
+        if ((glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) 
+            speed_coefficient += delta_time;
+        // decrease camera speed
+        if ((glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) && speed_coefficient > delta_time) 
+            speed_coefficient -= delta_time;
+        // raise camera up
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
+            cam_height += camera_speed;
+        // lower camera down
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+            cam_height -= camera_speed;
+
+        // deal with input to perform rotations
+        if ((glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rotateSide(cur_frame);
         }
-        
-        return;
+
+            
     }
 };
 
@@ -528,7 +531,12 @@ int main() {
         last_frame = current_frame;
 
         // process input
-        processInput(window);
+        cube_list.processInput(window, num_frames);
+
+        bool finished_rotation = cube_list.rs.update_rotation(num_frames);
+        if (finished_rotation) {
+            cube_list.finishSideRotation();
+        }
 
         // clear the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -544,7 +552,7 @@ int main() {
         }
 
         // update the rotation status
-        cube_list.rotateSide(num_frames);
+        // cube_list.rotateSide(num_frames);
 
         // swap buffers
         glfwSwapBuffers(window);
