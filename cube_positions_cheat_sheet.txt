@@ -18,6 +18,22 @@ Back Layer:
 24  25  26
 
 
+design documentation:
+what should happen when you try to turn a cube layer:
+1. turn key is picked up by processInput
+    rs.rotation_side is set depending on the key hit 
+    rotateSide(cur_frame) is called
+2. rotateSide: sets is_rotating to true, sets rotation_start_frame
+3. rs.updateRotation, which is running every frame, notices that is_rotating is true
+    slice_angle is chosen based on rs.rotation_side, which influences what angle the turn goes to
+    rs.cur_angle calculated based on cur_frame and slice angle to make animation
+4. once cur_frame is frames_per_rotation past the start frame, updateRotation sets:
+    is_rotating = false
+    returns true
+main is listening to see if updateRotation just finished so then it calls finishSideRotation
+5. finishSideRotation: changes cube_cur_positions to point each cube to a new transform
+also rotates colors on each cube to make them look correct without actually having to rotate them all the time
+
 
 
 

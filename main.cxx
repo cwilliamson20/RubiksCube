@@ -119,7 +119,6 @@ vec3 cube_translates[] = {
 class RotationStatus {
     public:
         bool is_rotating;   // true if there is a rotation in progress, false otherwise
-        bool just_finished_rotation;
         // index:   0     1      2    3       4      5
         // side:  back, front, left, right, bottom, top
         int rotation_side;  // which side of the cube is being rotated?
@@ -129,29 +128,34 @@ class RotationStatus {
 
     RotationStatus() {
         is_rotating = false;
-        just_finished_rotation = false;
         rotation_side = -1;
         cur_angle = 0.0f;
         rotation_start_frame = 0;
         frames_per_rotation = frames_per_second;
     }
 
-    bool update_rotation(int cur_frame) {
+    bool updateRotation(int cur_frame, int rotation_type) {
         // updates the rotation values based on how many frames have passed since the rotation started
         // check if the current rotation should be finished
+
+        // rotation type indicates which slice of the cube is rotating
+                            // back, front, left, right, bottom,  top
+        float angle_list[] = {90.0f, 90.0f, 90.0f, -90.0f, 90.0f, 90.0f};
+        float slice_angle = angle_list[rotation_side];
+
         if (!is_rotating) {
             return false;
         }
         if (cur_frame - rotation_start_frame == frames_per_rotation) {
             // finish the rotation and set this side into the final cur_position
+            cout << "cur_angle = " << cur_angle << "\n";
             is_rotating = false;
-            just_finished_rotation = true;
+            cur_angle = 0.0f;
             // cout << "just finished the rotation on frame " << cur_frame << "\n";
             return true;
         } else if (cur_frame - rotation_start_frame < frames_per_rotation) {
-            is_rotating = true;
-            cur_angle -= radians((float)1 / frames_per_rotation * 90.0f);
-            // cout << "in update_rotation, cur_frame = " << cur_frame << "\n";
+            cur_angle += radians((float)1 / frames_per_rotation * slice_angle);
+            // cout << "in updateRotation, cur_frame = " << cur_frame << "\n";
         }
         return false;
     }
@@ -210,75 +214,10 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     glEnableVertexAttribArray(1);
 }
 
-
-
-mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
-    // takes in the model for an individual cube and returns the model matrix
-    // that will put it in the right spot if it's currently being rotated
-    if (!is_rotating || rotation_angle == 0.0) return in_model;
-
-    // basic idea is to translate to the center of rotation (center of side that is rotating)
-    // rotate, then translate back to original cur_position
-    // translate needs to be different for each block
-    vec3 center_translate = vec3(0.0f, 0.0f, 0.0f);
-    // closest to front, top to bottom
-    if (start_position == 2)
-        center_translate = vec3(0.0f, -1.0f, -1.0f);
-    if (start_position == 5)
-        center_translate = vec3(0.0f, 0.0f, -1.0f);
-    if (start_position == 8)
-        center_translate = vec3(0.0f, 1.0f, -1.0f);
-    // middle to camera
-    if (start_position == 11)
-        center_translate = vec3(0.0f, -1.0f, 0.0f);
-    if (start_position == 14)
-        center_translate = vec3(0.0f, 0.0f, 0.0f);
-    if (start_position == 17)
-        center_translate = vec3(0.0f, 1.0f, 0.0f);
-    // farthest from camera
-    if (start_position == 20)
-        center_translate = vec3(0.0f, -1.0f, 1.0f);
-    if (start_position == 23)
-        center_translate = vec3(0.0f, 0.0f, 1.0f);
-    if (start_position == 26)
-        center_translate = vec3(0.0f, 1.0f, 1.0f);
-
-
-    if (start_position % 3 == 2) {
-    in_model = translate(in_model, center_translate);
-    in_model = rotate(in_model, rotation_angle, vec3(1.0, 0.0, 0.0));
-    center_translate *= -1;
-    in_model = translate(in_model, center_translate);
-    }
-    return in_model;
-}
-void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, RotationStatus rs, int index) {
-    mat4 model = mat4(1.0f);
-    model = translate(model, model_translate);
-    model = generateRotationModelMatrix(model, true, index, rs.cur_angle);
-
-    mat4 view = mat4(1.0f);
-    // use view to enable user camera movement
-    camera_pos = vec3(sin(cam_rotation_angle) * rotation_radius, cam_height, cos(cam_rotation_angle) * rotation_radius);
-    view = lookAt(camera_pos, camera_front, camera_up);
-
-    mat4 projection;
-    projection = perspective(radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
-
-    // send to the shader
-    GLuint model_loc = glGetUniformLocation(program_id, "model");
-    glUniformMatrix4fv(model_loc, 1, GL_FALSE, value_ptr(model));
-    GLuint view_loc = glGetUniformLocation(program_id, "view");
-    glUniformMatrix4fv(view_loc, 1, GL_FALSE, value_ptr(view));
-    GLuint projection_loc = glGetUniformLocation(program_id, "projection");
-    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
-}
-
 class Cube {
     // this is the blueprint for one cube on the rubik's cube out of 27 cubes
     public:
-        int cur_position;   // from 0 to 26, detailing which of the parts of the cube it is
-        int start_position;
+        int array_position;     // the cubes physical, unchanging location in the cubes array in the cube list
         GLuint cube_vertex_buffer;
         GLuint cube_color_buffer;
         float cube_colors[108];
@@ -314,7 +253,7 @@ class Cube {
 
     void printCubeInfo() {
         // prints the current value of this cube for debugging
-        cout << "cur_position = " << cur_position << "\n";
+        cout << "array_position = " << array_position << "\n";
         cout << "cube_colors = \n";
         for (int side = 0; side < 6; side++) {
             cout << "side " << side << ": ";
@@ -384,12 +323,16 @@ class CubeList {
         int num_cubes = 27;
         Cube cubes[27];
         RotationStatus rs;    // keeps track of current rotations and actually moves cubes around after rotation animation
+        // cube at index x in cubes has its current physical position it should be 
+        // drawn at tracked at position x in cube_cur_positions
+        // if cube_cur_positions matches {0, 1, ..., 26} then the cube is solved
+        int cube_cur_positions[27]; 
 
     CubeList() {
         // set up cur_position and start_position values for each cube
         for (int x = 0; x < 27; x++) {
-            cubes[x].cur_position = x;
-            cubes[x].start_position = x;
+            cubes[x].array_position = x;
+            cube_cur_positions[x] = x;  
         }
     }
 
@@ -427,16 +370,26 @@ class CubeList {
     }
 
     void finishSideRotation() {
-            cubes[2].cur_position = 20;
-            cubes[5].cur_position = 11;
-            cubes[8].cur_position = 2;
-            cubes[11].cur_position = 23;
-            cubes[14].cur_position = 14;
-            cubes[17].cur_position = 5;
-            cubes[20].cur_position = 26;
-            cubes[23].cur_position = 17;
-            cubes[26].cur_position = 8;
-            rs.just_finished_rotation = false;
+        int rotation_indices[] = {
+            0, 0, 0, 0, 0, 0, 0, 0, 0,      // back
+            0, 0, 0, 0, 0, 0, 0, 0, 0,      // front
+            6, 15, 24, 3, 12, 21, 0, 9, 18,     // left
+            20, 11, 2, 23, 14, 5, 26, 17, 8, // right
+        };
+        
+        // update cubes from the original cube array using their current positions in cur_cube_positions
+        if (rs.rotation_side == 3) {
+            for (int x = 2; x < 27; x+=3) {
+                cubes[x].rotateCubeColorsDown(3);
+                cube_cur_positions[x] = rotation_indices[27 + (int) x / 3];
+            }
+        } else if (rs.rotation_side == 2) {
+            for (int x = 0; x < 27; x+=3) {
+                cubes[x].rotateCubeColorsDown(1);
+                cout << "putting cube " << x << " in position " << rotation_indices[18 + (int) x / 3] << "\n";
+                cube_cur_positions[x] = rotation_indices[18 + (int) x / 3];
+            }
+        }
     }
 
     void processInput(GLFWwindow *window, int cur_frame) {
@@ -468,10 +421,74 @@ class CubeList {
 
         // deal with input to perform rotations
         if ((glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 3;   // right rotation
+            rotateSide(cur_frame);
+        }
+        if ((glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 2;   // left rotation
             rotateSide(cur_frame);
         }
 
             
+    }
+    mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
+        // takes in the model for an individual cube and returns the model matrix
+        // that will put it in the right spot if it's currently being rotated
+        if (!is_rotating || rotation_angle == 0.0) return in_model;
+
+        // basic idea is to translate to the center of rotation (center of side that is rotating)
+        // rotate, then translate back to original cur_position
+        // translate needs to be different for each block
+        // descriptions are when viewed from the right side, like the R rotation
+        vec3 center_translate_list[] = {
+            vec3(0.0f, -1.0f, -1.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, -1.0f), // closest to front, top to bottom
+            vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),    // middle to camera
+            vec3(0.0f, -1.0f, 1.0f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 1.0f, 1.0f)     // farthest from camera
+        };
+        vec3 center_translate = vec3(0.0f, 0.0f, 0.0f);
+        if (start_position % 3 == 2) {
+            // must be an R or R' rotation
+            center_translate = center_translate_list[(int) ((start_position - 2) / 3)];
+        } else if (start_position % 3 == 0) {
+            // must be an L or L' rotation
+            center_translate = center_translate_list[(int) (start_position / 3)];
+        } 
+
+        if ((rs.rotation_side == 3) && (start_position % 3 == 2)) {
+        in_model = translate(in_model, center_translate);
+        in_model = rotate(in_model, rotation_angle, vec3(1.0, 0.0, 0.0));
+        center_translate *= -1;
+        in_model = translate(in_model, center_translate);
+        } else if ((rs.rotation_side == 2) && (start_position % 3 == 0)) {
+            in_model = translate(in_model, center_translate);
+            in_model = rotate(in_model, rotation_angle, vec3(1.0, 0.0, 0.0));
+            center_translate *= -1;
+            in_model = translate(in_model, center_translate);
+        }
+        return in_model;
+
+    }
+
+    void setUpMVPMatrices(GLuint program_id, int width, int height, vec3 model_translate, int index) {
+        mat4 model = mat4(1.0f);
+        model = translate(model, model_translate);
+        model = generateRotationModelMatrix(model, true, index, rs.cur_angle);
+
+        mat4 view = mat4(1.0f);
+        // use view to enable user camera movement
+        camera_pos = vec3(sin(cam_rotation_angle) * rotation_radius, cam_height, cos(cam_rotation_angle) * rotation_radius);
+        view = lookAt(camera_pos, camera_front, camera_up);
+
+        mat4 projection;
+        projection = perspective(radians(45.0f), (float)width/(float)height, 0.1f, 100.0f);
+
+        // send to the shader
+        GLuint model_loc = glGetUniformLocation(program_id, "model");
+        glUniformMatrix4fv(model_loc, 1, GL_FALSE, value_ptr(model));
+        GLuint view_loc = glGetUniformLocation(program_id, "view");
+        glUniformMatrix4fv(view_loc, 1, GL_FALSE, value_ptr(view));
+        GLuint projection_loc = glGetUniformLocation(program_id, "projection");
+        glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
     }
 };
 
@@ -533,7 +550,7 @@ int main() {
         // process input
         cube_list.processInput(window, num_frames);
 
-        bool finished_rotation = cube_list.rs.update_rotation(num_frames);
+        bool finished_rotation = cube_list.rs.updateRotation(num_frames, 1);
         if (finished_rotation) {
             cube_list.finishSideRotation();
         }
@@ -545,9 +562,11 @@ int main() {
         glBindVertexArray(vertex_array_ID);
 
         // draw all of the cubes from the cube list
+        cout << "drawing cube " << 2 << " at cur_position " << cube_list.cube_cur_positions[2] << "\n";
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
-            setUpMVPMatrices(program_id, window_width, window_height, cube_translates[cube_list.cubes[x].cur_position], cube_list.rs, cube_list.cubes[x].cur_position);
+            // TODO: clean up the things I'm passing into this function now that it's in the CubeList class
+            cube_list.setUpMVPMatrices(program_id, window_width, window_height, cube_translates[cube_list.cube_cur_positions[x]], cube_list.cube_cur_positions[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
@@ -577,6 +596,5 @@ int main() {
     glfwTerminate();
 }
 
-// TODO: figure out rotation of one side of the cube
 // TODO: make non visible sides of cubes gray so that opposite color doesn't show mid turn
 // TODO: make sure that use of sleep function will actually function on all OS's https://www.geeksforgeeks.org/sleep-function-in-cpp/
