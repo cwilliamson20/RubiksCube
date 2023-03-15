@@ -323,8 +323,8 @@ class CubeList {
         int num_cubes = 27;
         Cube cubes[27];
         RotationStatus rs;    // keeps track of current rotations and actually moves cubes around after rotation animation
-        // cube at index x in cubes has its current physical position it should be 
-        // drawn at tracked at position x in cube_cur_positions
+        // cube at index x in cubes has its current physical position at index x in this array
+        // should be drawn at tracked at position x in cube_cur_positions
         // if cube_cur_positions matches {0, 1, ..., 26} then the cube is solved
         int cube_cur_positions[27]; 
 
@@ -370,26 +370,59 @@ class CubeList {
     }
 
     void finishSideRotation() {
-        int rotation_indices[] = {
-            0, 0, 0, 0, 0, 0, 0, 0, 0,      // back
-            0, 0, 0, 0, 0, 0, 0, 0, 0,      // front
-            6, 15, 24, 3, 12, 21, 0, 9, 18,     // left
-            20, 11, 2, 23, 14, 5, 26, 17, 8, // right
+        // how many times to rotate colors 
+
+        int right_transforms[] = {
+            2, 5, 8, 11, 14, 17, 20, 23, 26,    // position 0
+            20, 11, 2, 23, 14, 5, 26, 17, 8,    // position 1
         };
-        
+        int right_color[] = {0, 3};
+
+        int left_transforms[] = {
+            0, 3, 6, 9, 12, 15, 18, 21, 24,     // position 0
+            6, 15, 24, 3, 12, 21, 0, 9, 18,   // position 1
+        };
+        int left_color[] = {0, 1};
+
         // update cubes from the original cube array using their current positions in cur_cube_positions
-        if (rs.rotation_side == 3) {
-            for (int x = 2; x < 27; x+=3) {
-                cubes[x].rotateCubeColorsDown(3);
-                cube_cur_positions[x] = rotation_indices[27 + (int) x / 3];
-            }
-        } else if (rs.rotation_side == 2) {
-            for (int x = 0; x < 27; x+=3) {
-                cubes[x].rotateCubeColorsDown(1);
-                cout << "putting cube " << x << " in position " << rotation_indices[18 + (int) x / 3] << "\n";
-                cube_cur_positions[x] = rotation_indices[18 + (int) x / 3];
+        // want to update all the cubes whose cube_cur_positions values are along the correct layer
+        // color_rotations is formatted as {# left rotations, # down rotations}
+        int *transforms, *color_rotations;
+        if (rs.rotation_side == 2) { // left
+            transforms = left_transforms;
+            color_rotations = left_color;
+        }
+        if (rs.rotation_side == 3) { // right
+            transforms = right_transforms;
+            color_rotations = right_color;
+        }
+        // loop through cube_cur_positions looking for ones that need to be changed
+        for (int x = 0; x < 27; x++) {
+            for (int transform_index = 0; transform_index < 9; transform_index++) {
+                if (cube_cur_positions[x] == transforms[transform_index]) {
+                    // found a match that needs to be changed
+                    cout << "x = " << x << " t_i = " << transform_index << "\n";
+                    cout << "changed " << cube_cur_positions[x] << " to " << transforms[transform_index + 9] << "\n"; 
+                    cube_cur_positions[x] = transforms[transform_index + 9];
+                    cubes[cube_cur_positions[x]].rotateCubeColorsDown(color_rotations[0]);
+                    cubes[cube_cur_positions[x]].rotateCubeColorsDown(color_rotations[1]);
+                    break;
+                }
             }
         }
+        // if (rs.rotation_side == 3) {            // right
+        //     for (int x = 2; x < 27; x+=3) {
+        //         cubes[cube_cur_positions[x]].rotateCubeColorsDown(3);
+        //         cube_cur_positions[x] = right_transforms[(int) x / 3];
+        //         cout << "putting cube " << x << " with cur pos = " << cube_cur_positions[x] << " in position " << right_transforms[(int) x / 3] << "\n";
+        //     }
+        // } else if (rs.rotation_side == 2) {     // left
+        //     for (int x = 0; x < 27; x+=3) {
+        //         cubes[cube_cur_positions[x]].rotateCubeColorsDown(1);
+        //         cout << "putting cube " << cube_cur_positions[x] << " in position " << rotation_indices[18 + (int) x / 3] << "\n";
+        //         cube_cur_positions[x] = rotation_indices[18 + (int) x / 3];
+        //     }
+        // }
     }
 
     void processInput(GLFWwindow *window, int cur_frame) {
@@ -562,7 +595,6 @@ int main() {
         glBindVertexArray(vertex_array_ID);
 
         // draw all of the cubes from the cube list
-        cout << "drawing cube " << 2 << " at cur_position " << cube_list.cube_cur_positions[2] << "\n";
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
             // TODO: clean up the things I'm passing into this function now that it's in the CubeList class

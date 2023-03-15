@@ -17,6 +17,10 @@ Back Layer:
 21  22  23  
 24  25  26
 
+cube_cur_position: 
+cube at index x in cubes has its current physical position at index x in this array
+should be drawn at tracked at position x in cube_cur_positions
+if cube_cur_positions matches {0, 1, ..., 26} then the cube is solved
 
 design documentation:
 what should happen when you try to turn a cube layer:
