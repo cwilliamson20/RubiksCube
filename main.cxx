@@ -140,7 +140,7 @@ class RotationStatus {
 
         // rotation type indicates which slice of the cube is rotating
                             // back, front, left, right, bottom,  top
-        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, 90.0f};
+        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f};
         float slice_angle = angle_list[rotation_side];
 
         if (!is_rotating) {
@@ -315,6 +315,28 @@ class Cube {
             setCubeSideColor(5, cur_colors[6], cur_colors[7], cur_colors[8]);    // set top to back
         } 
     }
+    void rotateCubeColorsClockwise(int clockwise_times) {
+    // rotates all the colors on the cube as if spinning the cube clockwise while keeping the base flat
+    for (int x = 0; x < clockwise_times % 4; x++) {
+        float cur_colors[] = {
+                cube_colors[18], cube_colors[19], cube_colors[20],      // original front colors
+                cube_colors[36], cube_colors[37], cube_colors[38],      // original left colors
+                cube_colors[0], cube_colors[1], cube_colors[2],         // original back colors
+                cube_colors[54], cube_colors[55], cube_colors[56],      // original right colors
+        };
+
+        // multiply all by 255 because colors are stored 0 to 1 but change color function takes in 0 to 255
+        for (int x = 0; x < 12; x++) {
+            cur_colors[x] *= 255.0f;
+        }
+
+        // change cube_colors to have rotated around by one clockwise
+        setCubeSideColor(1, cur_colors[9], cur_colors[10], cur_colors[11]);  // set front to right
+        setCubeSideColor(2, cur_colors[0], cur_colors[1], cur_colors[2]);    // set left to front
+        setCubeSideColor(0, cur_colors[3], cur_colors[4], cur_colors[5]);    // set back to left
+        setCubeSideColor(3, cur_colors[6], cur_colors[7], cur_colors[8]);    // set right to back
+    } 
+    }
 };
 
 class CubeList {
@@ -374,29 +396,41 @@ class CubeList {
             18, 19, 20, 21, 22, 23, 24, 25, 26,     // position 0
             24, 21, 18, 25, 22, 19, 26, 23, 20,     // position 1
         };
-        int back_color[] = {3, 0};
+        int back_color[] = {3, 0, 0};
 
         int front_transforms[] = {
             0, 1, 2, 3, 4, 5, 6, 7, 8,      // position 0
             2, 5, 8, 1, 4, 7, 0, 3, 6,      // position 1
         };
-        int front_color[] = {1, 0};
+        int front_color[] = {1, 0, 0};
 
         int left_transforms[] = {
             0, 3, 6, 9, 12, 15, 18, 21, 24,     // position 0
             6, 15, 24, 3, 12, 21, 0, 9, 18,   // position 1
         };
-        int left_color[] = {0, 1};
+        int left_color[] = {0, 1, 0};
 
         int right_transforms[] = {
             2, 5, 8, 11, 14, 17, 20, 23, 26,    // position 0
             20, 11, 2, 23, 14, 5, 26, 17, 8,    // position 1
         };
-        int right_color[] = {0, 3};
+        int right_color[] = {0, 3, 0};
+
+        int bottom_transforms[] = {
+            6, 7, 8, 15, 16, 17, 24, 25, 26,    // position 0
+            8, 17, 26, 7, 16, 25, 6, 15, 24,    // position 1
+        };
+        int bottom_color[] = {0, 0, 3};
+
+        int top_transforms[] = {
+            0, 1, 2, 9, 10, 11, 18, 19, 20,     // position 0
+            18, 9, 0, 19, 10, 1, 20, 11, 2,
+        };
+        int top_color[] = {0, 0, 1};
 
         // update cubes from the original cube array using their current positions in cur_cube_positions
         // want to update all the cubes whose cube_cur_positions values are along the correct layer
-        // color_rotations is formatted as {# right rotations, # down rotations}
+        // color_rotations is formatted as {# right rotations, # down rotations, # clockwise rotations}
         int *transforms, *color_rotations;
         if (rs.rotation_side == 0) { // back
             transforms = back_transforms;
@@ -414,6 +448,15 @@ class CubeList {
             transforms = right_transforms;
             color_rotations = right_color;
         }
+        if (rs.rotation_side == 4) { // bottom
+            transforms = bottom_transforms;
+            color_rotations = bottom_color;
+        }
+        if (rs.rotation_side == 5) { // top
+            transforms = top_transforms;
+            color_rotations = top_color;
+        }
+
         // loop through cube_cur_positions looking for ones that need to be changed
         for (int x = 0; x < 27; x++) {
             for (int transform_index = 0; transform_index < 9; transform_index++) {
@@ -423,6 +466,7 @@ class CubeList {
                     // cout << "changed " << cube_cur_positions[x] << " to " << transforms[transform_index + 9] << "\n"; 
                     cubes[x].rotateCubeColorsRight(color_rotations[0]);
                     cubes[x].rotateCubeColorsDown(color_rotations[1]);
+                    cubes[x].rotateCubeColorsClockwise(color_rotations[2]);
                     cube_cur_positions[x] = transforms[transform_index + 9];
                     break;
                 }
@@ -474,11 +518,14 @@ class CubeList {
             rs.rotation_side = 0;   // back rotation
             rotateSide(cur_frame);
         }
-
-        
-
-
-            
+        if ((glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 4;   // down rotation
+            rotateSide(cur_frame);
+        }
+        if ((glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 5;   // up rotation
+            rotateSide(cur_frame);
+        }            
     }
     mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
         // takes in the model for an individual cube and returns the model matrix
@@ -495,21 +542,31 @@ class CubeList {
             vec3(0.0f, -1.0f, 1.0f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 1.0f, 1.0f)     // farthest from camera
         };
         
-        vec3 y_center_translate_list[] = {
+        vec3 z_center_translate_list[] = {
             vec3(1.0f, -1.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f), vec3(-1.0f, -1.0f, 0.0f), // top
             vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(-1.0f, 0.0f, 0.0f),    // middle
             vec3(1.0f, 1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), vec3(-1.0f, 1.0f, 0.0f)     // bottom
         };
 
+        vec3 y_center_translate_list[] = {
+            vec3(1.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, -1.0f), vec3(-1.0f, 0.0f, -1.0f), // closest to camera
+            vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(-1.0f, 0.0f, 0.0f),    // middle to camera
+            vec3(1.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 1.0f), vec3(-1.0f, 0.0f, 1.0f)     // furthest from camera
+        };
+
         vec3 center_translate = vec3(0.0f, 0.0f, 0.0f);
+        if ((rs.rotation_side == 0) && (18 <= start_position) && (start_position <= 26))  // back
+            center_translate = z_center_translate_list[start_position - 18];
         if ((rs.rotation_side == 1) && (0 <= start_position) && (start_position <= 8))  // front
-            center_translate = y_center_translate_list[start_position];
-        if ((rs.rotation_side == 0) && (18 <= start_position) && (start_position <= 26))  // front
-            center_translate = y_center_translate_list[start_position - 18];
+            center_translate = z_center_translate_list[start_position];
         if ((rs.rotation_side == 2) && (start_position % 3 == 0))  // left
             center_translate = x_center_translate_list[(int) (start_position / 3)];
         if ((rs.rotation_side == 3) && (start_position % 3 == 2))  // right
             center_translate = x_center_translate_list[(int) ((start_position - 2) / 3)];
+        if ((rs.rotation_side == 4) && (start_position % 9 >= 6))  // bottom
+            center_translate = y_center_translate_list[((start_position % 9) - 6) + (((int) start_position / 3) - 2)];
+        if ((rs.rotation_side == 5) && (start_position % 9 <= 2))  // top
+            center_translate = y_center_translate_list[(start_position % 9) + ((int) start_position / 3)];
 
         in_model = translate(in_model, center_translate);
         // left and right rotations (rotate on the x axis)
@@ -520,6 +577,10 @@ class CubeList {
         // front and back rotations (rotate on the y axis)
         if (((rs.rotation_side == 1) && (0 <= start_position) && (start_position <= 8)) || ((rs.rotation_side == 0) && (18 <= start_position) && (start_position <= 26))) {
             in_model = rotate(in_model, rotation_angle, vec3(0.0, 0.0, 1.0));
+        }
+
+        if ((rs.rotation_side == 4) && ((start_position % 9 >= 6)) || (rs.rotation_side == 5) && (start_position % 9 <= 2)) {
+            in_model = rotate(in_model, rotation_angle, vec3(0.0, 1.0, 0.0));
         }
 
 
