@@ -2,6 +2,14 @@ Cube Side Indices:
 index:   0     1      2    3       4      5
 side:  back, front, left, right, bottom, top
 
+multiple rotation indices:
+6: rotate middle same direction as default top, E for equator
+7: rotate top and bottom at the same time, clockwise from the top
+
+Reverse Regular Rotation Indices: (* means not implemented yet)
+index:   8*    9*    10*   11*     12*   13*
+side:  back, front, left, right, bottom, top
+
 Front Layer:
 0   1   2
 3   4   5  
@@ -39,6 +47,30 @@ main is listening to see if updateRotation just finished so then it calls finish
 also rotates colors on each cube to make them look correct without actually having to rotate them all the time
 
 
+
+
+
+CONTROLS:
+Camera movement: 
+    W: forward
+    A: left
+    S: backward
+    D: right
+    Left Alt: down
+    Space: up
+    H: return camera to start x position (height/zoom doesn't change)
+
+Camera Speed:
+    Up Arrow: increase speed
+    Down Arrow: decrease speed
+
+Cube rotations (from perspective of camera start):
+    R: right
+    L: left
+    F: front
+    B: back
+    U: up
+    V: down
 
 
 

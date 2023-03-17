@@ -25,7 +25,7 @@ float cam_height = 0.0;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
-float frames_per_second = 60.0;
+float frames_per_second = 10.0;
 float start_time = glfwGetTime();
 
 float vertices[] = {
@@ -139,8 +139,9 @@ class RotationStatus {
         // check if the current rotation should be finished
 
         // rotation type indicates which slice of the cube is rotating
-                            // back, front, left, right, bottom,  top
-        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f};
+
+                            // back, front,  left,  right, bottom,  top, equator, entire, back', front', left',  right', bottom', top'
+        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, -90.0f, -90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, 90.0f};
         float slice_angle = angle_list[rotation_side];
 
         if (!is_rotating) {
@@ -349,12 +350,14 @@ class CubeList {
         // should be drawn at tracked at position x in cube_cur_positions
         // if cube_cur_positions matches {0, 1, ..., 26} then the cube is solved
         int cube_cur_positions[27]; 
+        int cube_solved_positions[27];  // changed when cube is rotated to keep track of what solved looks like
 
     CubeList() {
         // set up cur_position and start_position values for each cube
         for (int x = 0; x < 27; x++) {
             cubes[x].array_position = x;
             cube_cur_positions[x] = x;  
+            cube_solved_positions[x] = x;
         }
     }
 
@@ -365,6 +368,31 @@ class CubeList {
         for (int x = 0; x < num_cubes; x++) {
             cubes[x].setCubeSideColor(side, r, g, b);
         }
+    }
+    
+    void changeCubePerspective(int num_clockwise_rotations) {
+        // takes the entire cube and rotates it clockwise once to change the perpective of the rotations
+        // change the values in cube_cur_positions to draw them differently
+        // also update cube_solved_positions to keep track of what solved looks like
+        // TODO: figure out how to do rotations simoltaneously. Then I only need to add an M rotation to make this animate
+        // rotate cube transform:
+        int rotate_transform[] = {
+            // original position map
+            0, 1, 2,
+            3, 4, 5,
+            6, 7, 8, 
+
+            9,  10, 11,
+            12, 13, 14, 
+            15, 16, 17,
+
+            18, 19, 20, 
+            21, 22, 23,
+            24, 25, 26,
+
+            // new position map
+
+        };
     }
 
     void changeColorPallete(float in_colors[]) {
@@ -428,6 +456,12 @@ class CubeList {
         };
         int top_color[] = {0, 0, 1};
 
+        int equator_transforms[] = {
+            3, 4, 5, 12, 13, 14, 21, 22, 23,    // position 0
+            21, 12, 3, 22, 13, 4, 23, 14, 5,
+        };
+        int equator_color[] = {0, 0, 1};
+
         // update cubes from the original cube array using their current positions in cur_cube_positions
         // want to update all the cubes whose cube_cur_positions values are along the correct layer
         // color_rotations is formatted as {# right rotations, # down rotations, # clockwise rotations}
@@ -456,7 +490,32 @@ class CubeList {
             transforms = top_transforms;
             color_rotations = top_color;
         }
-
+        if (rs.rotation_side == 6) { // equator   
+            transforms = equator_transforms;
+            color_rotations = equator_color;
+        }
+        if (rs.rotation_side == 7) { // rotate entire cube in top rotation direction
+           // do top fixes
+           rs.rotation_side = 5;
+           finishSideRotation();
+           // do middle fixes
+           rs.rotation_side = 6;
+           finishSideRotation();
+           // do bottom fixes
+           rs.rotation_side = 4;
+           finishSideRotation();
+           // leave because the rest of this function doesn't need to run
+           rs.rotation_side = 7;
+           return;
+        }
+        if (rs.rotation_side == 12) {
+            rs.rotation_side = 4;
+            finishSideRotation();
+            finishSideRotation();
+            finishSideRotation();
+            rs.rotation_side = 12;
+            return;
+        }
         // loop through cube_cur_positions looking for ones that need to be changed
         for (int x = 0; x < 27; x++) {
             for (int transform_index = 0; transform_index < 9; transform_index++) {
@@ -476,6 +535,13 @@ class CubeList {
 
     void processInput(GLFWwindow *window, int cur_frame) {
         const float camera_speed = speed_coefficient * delta_time; // adjust accordingly
+
+        if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) 
+            cam_rotation_angle = 0.0f;
+        if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS) 
+            changeCubePerspective(1);
+        
+
         // W is get closer, so shrink down rotation radius
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
             rotation_radius -= camera_speed;
@@ -498,7 +564,7 @@ class CubeList {
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
             cam_height += camera_speed;
         // lower camera down
-        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS)
             cam_height -= camera_speed;
 
         // deal with input to perform rotations
@@ -515,18 +581,30 @@ class CubeList {
             rotateSide(cur_frame);
         }
         if ((glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) && (rs.is_rotating == false)) {
-            rs.rotation_side = 0;   // back rotation
+            rs.rotation_side = 0;
             rotateSide(cur_frame);
         }
         if ((glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 4;   // down rotation
+            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+                rs.rotation_side = 12;
+            }
             rotateSide(cur_frame);
         }
         if ((glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 5;   // up rotation
             rotateSide(cur_frame);
-        }            
+        }
+        if ((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 6;   // equator rotation
+            rotateSide(cur_frame);
+        }  
+        if ((glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 7;   // rotate entire cube
+            rotateSide(cur_frame);
+        }      
     }
+
     mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
         // takes in the model for an individual cube and returns the model matrix
         // that will put it in the right spot if it's currently being rotated
@@ -563,10 +641,13 @@ class CubeList {
             center_translate = x_center_translate_list[(int) (start_position / 3)];
         if ((rs.rotation_side == 3) && (start_position % 3 == 2))  // right
             center_translate = x_center_translate_list[(int) ((start_position - 2) / 3)];
-        if ((rs.rotation_side == 4) && (start_position % 9 >= 6))  // bottom
-            center_translate = y_center_translate_list[((start_position % 9) - 6) + (((int) start_position / 3) - 2)];
-        if ((rs.rotation_side == 5) && (start_position % 9 <= 2))  // top
+        if ((rs.rotation_side == 4 || rs.rotation_side == 7 || rs.rotation_side == 12) && (start_position % 9 >= 6))  // bottom
+           center_translate = y_center_translate_list[((start_position % 9) - 6) + (((int) start_position / 3) - 2)];
+        if ((rs.rotation_side == 5 || rs.rotation_side == 7) && (start_position % 9 <= 2))  // top
             center_translate = y_center_translate_list[(start_position % 9) + ((int) start_position / 3)];
+        if ((rs.rotation_side == 6 || rs.rotation_side == 7) && (start_position % 9 >= 3 && start_position % 9 <= 5))  // middle
+            center_translate = y_center_translate_list[((start_position % 9) - 3) + (((int) start_position / 3) - 1)];
+        
 
         in_model = translate(in_model, center_translate);
         // left and right rotations (rotate on the x axis)
@@ -574,12 +655,16 @@ class CubeList {
             in_model = rotate(in_model, rotation_angle, vec3(1.0, 0.0, 0.0));
             
         } 
-        // front and back rotations (rotate on the y axis)
+        // front and back rotations (rotate on the z axis)
         if (((rs.rotation_side == 1) && (0 <= start_position) && (start_position <= 8)) || ((rs.rotation_side == 0) && (18 <= start_position) && (start_position <= 26))) {
             in_model = rotate(in_model, rotation_angle, vec3(0.0, 0.0, 1.0));
         }
 
-        if ((rs.rotation_side == 4) && ((start_position % 9 >= 6)) || (rs.rotation_side == 5) && (start_position % 9 <= 2)) {
+        // top, equator, and bottom rotations (rotate on the y axis)
+        if ((((rs.rotation_side == 4) || rs.rotation_side == 12) && ((start_position % 9 >= 6))) ||   // bottom
+        ((rs.rotation_side == 5) && (start_position % 9 <= 2)) ||         // top
+        ((rs.rotation_side == 6) && (start_position % 9 >= 3 && start_position % 9 <= 5)) ||
+        ((rs.rotation_side == 7) && ((start_position % 9 <= 2) || (start_position % 9 >= 6) || (start_position % 9 >= 3 && start_position % 9 <= 5)))) { // rotate entire cube
             in_model = rotate(in_model, rotation_angle, vec3(0.0, 1.0, 0.0));
         }
 
