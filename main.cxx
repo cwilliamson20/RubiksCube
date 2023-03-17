@@ -25,7 +25,7 @@ float cam_height = 0.0;
 
 float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
-float frames_per_second = 10.0;
+float frames_per_second = 60.0;
 float start_time = glfwGetTime();
 
 float vertices[] = {
@@ -140,8 +140,8 @@ class RotationStatus {
 
         // rotation type indicates which slice of the cube is rotating
 
-                            // back, front,  left,  right, bottom,  top, equator, entire, back', front', left',  right', bottom', top'
-        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, -90.0f, -90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, 90.0f};
+                            // back, front,  left,  right, bottom,  top, equator, entire, back', front', left',  right', bottom', top', equator'
+        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, -90.0f, -90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, 90.0f, 90.0f};
         float slice_angle = angle_list[rotation_side];
 
         if (!is_rotating) {
@@ -502,18 +502,19 @@ class CubeList {
            rs.rotation_side = 6;
            finishSideRotation();
            // do bottom fixes
-           rs.rotation_side = 4;
+           rs.rotation_side = 12;
            finishSideRotation();
            // leave because the rest of this function doesn't need to run
            rs.rotation_side = 7;
            return;
         }
-        if (rs.rotation_side == 12) {
-            rs.rotation_side = 4;
+        if (rs.rotation_side >= 8 && rs.rotation_side <= 15) {
+            // do the same transform but 3 times to mimic the reverse rotation
+            rs.rotation_side -= 8;
             finishSideRotation();
             finishSideRotation();
             finishSideRotation();
-            rs.rotation_side = 12;
+            rs.rotation_side += 8;
             return;
         }
         // loop through cube_cur_positions looking for ones that need to be changed
@@ -568,38 +569,63 @@ class CubeList {
             cam_height -= camera_speed;
 
         // deal with input to perform rotations
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 11;
+            rotateSide(cur_frame);
+        }
         if ((glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 3;   // right rotation
+            rotateSide(cur_frame);
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 10;
             rotateSide(cur_frame);
         }
         if ((glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 2;   // left rotation
             rotateSide(cur_frame);
         }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 9;
+            rotateSide(cur_frame);
+        }
         if ((glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 1;   // front rotation
             rotateSide(cur_frame);
         }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 8;
+            rotateSide(cur_frame);
+        }
         if ((glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) && (rs.is_rotating == false)) {
-            rs.rotation_side = 0;
+            rs.rotation_side = 0;   // back rotation
+            rotateSide(cur_frame);
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 12;
             rotateSide(cur_frame);
         }
         if ((glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) && (rs.is_rotating == false)) {
-            rs.rotation_side = 4;   // down rotation
-            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-                rs.rotation_side = 12;
-            }
+            rs.rotation_side = 4;
+            rotateSide(cur_frame);
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 13;
             rotateSide(cur_frame);
         }
         if ((glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 5;   // up rotation
             rotateSide(cur_frame);
         }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 14;
+            rotateSide(cur_frame);
+        }
         if ((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 6;   // equator rotation
             rotateSide(cur_frame);
         }  
-        if ((glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) && (rs.is_rotating == false)) {
+        if ((glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 7;   // rotate entire cube
             rotateSide(cur_frame);
         }      
@@ -633,37 +659,37 @@ class CubeList {
         };
 
         vec3 center_translate = vec3(0.0f, 0.0f, 0.0f);
-        if ((rs.rotation_side == 0) && (18 <= start_position) && (start_position <= 26))  // back
+        if ((rs.rotation_side == 0 || rs.rotation_side == 8) && (18 <= start_position) && (start_position <= 26))  // back
             center_translate = z_center_translate_list[start_position - 18];
-        if ((rs.rotation_side == 1) && (0 <= start_position) && (start_position <= 8))  // front
+        if ((rs.rotation_side == 1 || rs.rotation_side == 9) && (0 <= start_position) && (start_position <= 8))  // front
             center_translate = z_center_translate_list[start_position];
-        if ((rs.rotation_side == 2) && (start_position % 3 == 0))  // left
+        if ((rs.rotation_side == 2 || rs.rotation_side == 10) && (start_position % 3 == 0))  // left
             center_translate = x_center_translate_list[(int) (start_position / 3)];
-        if ((rs.rotation_side == 3) && (start_position % 3 == 2))  // right
+        if ((rs.rotation_side == 3 || rs.rotation_side == 11) && (start_position % 3 == 2))  // right
             center_translate = x_center_translate_list[(int) ((start_position - 2) / 3)];
         if ((rs.rotation_side == 4 || rs.rotation_side == 7 || rs.rotation_side == 12) && (start_position % 9 >= 6))  // bottom
            center_translate = y_center_translate_list[((start_position % 9) - 6) + (((int) start_position / 3) - 2)];
-        if ((rs.rotation_side == 5 || rs.rotation_side == 7) && (start_position % 9 <= 2))  // top
+        if ((rs.rotation_side == 5 || rs.rotation_side == 7 || rs.rotation_side == 13) && (start_position % 9 <= 2))  // top
             center_translate = y_center_translate_list[(start_position % 9) + ((int) start_position / 3)];
-        if ((rs.rotation_side == 6 || rs.rotation_side == 7) && (start_position % 9 >= 3 && start_position % 9 <= 5))  // middle
+        if ((rs.rotation_side == 6 || rs.rotation_side == 7 || rs.rotation_side == 14) && (start_position % 9 >= 3 && start_position % 9 <= 5))  // middle
             center_translate = y_center_translate_list[((start_position % 9) - 3) + (((int) start_position / 3) - 1)];
         
 
         in_model = translate(in_model, center_translate);
         // left and right rotations (rotate on the x axis)
-        if (((rs.rotation_side == 2) && (start_position % 3 == 0)) || ((rs.rotation_side == 3) && (start_position % 3 == 2))) {
+        if (((rs.rotation_side == 2 || rs.rotation_side == 10) && (start_position % 3 == 0)) || ((rs.rotation_side == 3 || rs.rotation_side == 11) && (start_position % 3 == 2))) {
             in_model = rotate(in_model, rotation_angle, vec3(1.0, 0.0, 0.0));
             
         } 
         // front and back rotations (rotate on the z axis)
-        if (((rs.rotation_side == 1) && (0 <= start_position) && (start_position <= 8)) || ((rs.rotation_side == 0) && (18 <= start_position) && (start_position <= 26))) {
+        if (((rs.rotation_side == 1 || rs.rotation_side == 9) && (0 <= start_position) && (start_position <= 8)) || ((rs.rotation_side == 0 || rs.rotation_side == 8) && (18 <= start_position) && (start_position <= 26))) {
             in_model = rotate(in_model, rotation_angle, vec3(0.0, 0.0, 1.0));
         }
 
         // top, equator, and bottom rotations (rotate on the y axis)
-        if ((((rs.rotation_side == 4) || rs.rotation_side == 12) && ((start_position % 9 >= 6))) ||   // bottom
-        ((rs.rotation_side == 5) && (start_position % 9 <= 2)) ||         // top
-        ((rs.rotation_side == 6) && (start_position % 9 >= 3 && start_position % 9 <= 5)) ||
+        if (((rs.rotation_side == 4 || rs.rotation_side == 12) && ((start_position % 9 >= 6))) ||   // bottom
+        ((rs.rotation_side == 5 || rs.rotation_side == 13) && (start_position % 9 <= 2)) ||         // top
+        ((rs.rotation_side == 6 || rs.rotation_side == 14) && (start_position % 9 >= 3 && start_position % 9 <= 5)) ||  // equator
         ((rs.rotation_side == 7) && ((start_position % 9 <= 2) || (start_position % 9 >= 6) || (start_position % 9 >= 3 && start_position % 9 <= 5)))) { // rotate entire cube
             in_model = rotate(in_model, rotation_angle, vec3(0.0, 1.0, 0.0));
         }

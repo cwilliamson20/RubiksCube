@@ -4,11 +4,14 @@ side:  back, front, left, right, bottom, top
 
 multiple rotation indices:
 6: rotate middle same direction as default top, E for equator
-7: rotate top and bottom at the same time, clockwise from the top
+7: rotate top, equator, bottom at the same time, clockwise from the top
 
 Reverse Regular Rotation Indices: (* means not implemented yet)
-index:   8*    9*    10*   11*     12*   13*
-side:  back, front, left, right, bottom, top
+index:   8*    9*    10*   11*     12    13*,   14*
+side:  back, front, left, right, bottom, top, equator
+
+15*: rotate the entire cube but in other direction to 7
+
 
 Front Layer:
 0   1   2
