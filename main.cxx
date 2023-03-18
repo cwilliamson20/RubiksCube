@@ -587,7 +587,7 @@ class CubeList {
         const float camera_speed = speed_coefficient * delta_time; // adjust accordingly
 
         // W is get closer, so shrink down rotation radius
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
+        if ((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) && (rotation_radius > camera_speed)) 
             rotation_radius -= camera_speed;
         // get further away
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) 
