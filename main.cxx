@@ -225,6 +225,7 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, 16);
     
     // load and generate the texture
     float texture_coords[] = {
@@ -797,6 +798,7 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 }
 
 int main() {
+    // Set Flag that extension is supported
     int window_width = 800;
     int window_height = 600;
     GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
