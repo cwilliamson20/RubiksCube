@@ -7,7 +7,7 @@ multiple rotation indices:
 7: rotate top, equator, bottom at the same time, clockwise from the top
 
 Reverse Regular Rotation Indices: (* means not implemented yet)
-index:   8*    9*    10*   11*     12    13*,   14*
+index:   8    9     10    11      12    13     14 
 side:  back, front, left, right, bottom, top, equator
 
 15*: rotate the entire cube but in other direction to 7
@@ -74,6 +74,8 @@ Cube rotations (from perspective of camera start):
     B: back
     U: up
     V: down
+
+M: change view between stickered and not stickered
 
 
 

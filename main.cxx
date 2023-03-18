@@ -28,6 +28,7 @@ float delta_time = 0.0f;	// Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
 float frames_per_second = 60.0;
 float start_time = glfwGetTime();
+int change_texture = 0.0;
 
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,
@@ -274,7 +275,8 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     glEnableVertexAttribArray(2);  
     glBindTexture(GL_TEXTURE_2D, texture);
     int width, height, nrChannels;
-    unsigned char *data = stbi_load("default_stickered.jpg", &width, &height, &nrChannels, 0);
+    unsigned char *data;
+    data = stbi_load("default_stickered.jpg", &width, &height, &nrChannels, 0);
     if (data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -441,31 +443,6 @@ class CubeList {
             cubes[x].setCubeSideColor(side, r, g, b);
         }
     }
-    
-    void changeCubePerspective(int num_clockwise_rotations) {
-        // takes the entire cube and rotates it clockwise once to change the perpective of the rotations
-        // change the values in cube_cur_positions to draw them differently
-        // also update cube_solved_positions to keep track of what solved looks like
-        // TODO: figure out how to do rotations simoltaneously. Then I only need to add an M rotation to make this animate
-        // rotate cube transform:
-        int rotate_transform[] = {
-            // original position map
-            0, 1, 2,
-            3, 4, 5,
-            6, 7, 8, 
-
-            9,  10, 11,
-            12, 13, 14, 
-            15, 16, 17,
-
-            18, 19, 20, 
-            21, 22, 23,
-            24, 25, 26,
-
-            // new position map
-
-        };
-    }
 
     void changeColorPallete(float in_colors[]) {
         // takes in a list of 18 floats an applies that color scheme to the cube
@@ -609,12 +586,6 @@ class CubeList {
     void processInput(GLFWwindow *window, int cur_frame) {
         const float camera_speed = speed_coefficient * delta_time; // adjust accordingly
 
-        if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) 
-            cam_rotation_angle = 0.0f;
-        if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS) 
-            changeCubePerspective(1);
-        
-
         // W is get closer, so shrink down rotation radius
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
             rotation_radius -= camera_speed;
@@ -700,7 +671,7 @@ class CubeList {
         if ((glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 7;   // rotate entire cube
             rotateSide(cur_frame);
-        }      
+        }   
     }
 
     mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
@@ -794,7 +765,36 @@ class CubeList {
         GLuint projection_loc = glGetUniformLocation(program_id, "projection");
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
     }
+
+    void updateTexture() {
+        int width, height, nrChannels;
+        unsigned char *data;
+        switch(change_texture) {
+            case 0:     // default to default_stickered
+                data = stbi_load("default_stickered.jpg", &width, &height, &nrChannels, 0);
+                break;
+            case 1: 
+                data = data = stbi_load("default_unstickered.jpg", &width, &height, &nrChannels, 0);
+                break;         
+        }
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
 };
+
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    // use this function for inputs that only have one key input like changing texture
+    // use processInput for continuous inputs, like camera movement
+    
+    // reset camera position
+    if (key == GLFW_KEY_H && action == GLFW_PRESS) 
+       cam_rotation_angle = 0.0f;
+
+    // change cube texture
+    if (key == GLFW_KEY_M && action == GLFW_PRESS) 
+       change_texture = (change_texture + 1) % 2;
+}
 
 int main() {
     int window_width = 800;
@@ -825,6 +825,9 @@ int main() {
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
+    // new process input using glfwKeyCallback to prevent multiple inputs from one key tap
+    glfwSetKeyCallback(window, keyCallback);
+
     // set up initial default color pallete
     // back, front, left, right, bottom, top
     float default_colors[] = {
@@ -853,6 +856,7 @@ int main() {
 
         // process input
         cube_list.processInput(window, num_frames);
+        cube_list.updateTexture();
 
         bool finished_rotation = cube_list.rs.updateRotation(num_frames);
         if (finished_rotation) {
