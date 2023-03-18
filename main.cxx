@@ -13,6 +13,7 @@ using namespace glm;
 #include <glm/gtc/matrix_transform.hpp>  // translate, rotate, scale
 #include <glm/gtc/type_ptr.hpp>
 #include <unistd.h>
+#include "stb_image.h"
 
 
 vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
@@ -213,6 +214,77 @@ void setUpBuffersAndEBO(GLuint vertex_buffer, GLuint EBO, GLuint color_buffer) {
     // tell OpenGL how to look at this data when drawing
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
+
+    // set up texture to change look of cube
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    // set the texture wrapping/filtering options (on the currently bound texture object)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    // load and generate the texture
+    float texture_coords[] = {
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f, 
+        0.0f, 1.0f, 
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+    };
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 2 * 36, texture_coords, GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(2);  
+    glBindTexture(GL_TEXTURE_2D, texture);
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load("default_stickered.jpg", &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+    stbi_image_free(data);
 }
 
 class Cube {
@@ -749,7 +821,7 @@ int main() {
 
     // enable to draw in wireframe mode and see the edges of the triangles
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
+    
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
