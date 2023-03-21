@@ -6,7 +6,6 @@ using std::cout;
 #define GLFW_INCLUDE_NONE
 #include <GL/glew.h>    // include GLEW and new version of GL on Windows
 #include <GLFW/glfw3.h> // GLFW helper library
-// avoid having to use  all the time
 #include <glm/glm.hpp>
 using namespace glm;
 #include "shader.h"
@@ -145,7 +144,6 @@ class RotationStatus {
         // check if the current rotation should be finished
 
         // rotation type indicates which slice of the cube is rotating
-
                             // back, front,  left,  right, bottom,  top, equator, entire, back', front', left',  right', bottom', top', equator', entire'
         float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, -90.0f, -90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, 90.0f, 90.0f, 90.0f};
         float slice_angle = angle_list[rotation_side];
@@ -505,10 +503,6 @@ class CubeList {
     }
 
     void rotateSide(int cur_frame) {
-        // does an R rotation on the cube from the original camera cur_position
-        // cube positions to work on: 2, 5, 8, 11, 14, 17, 20, 23, 26
-        // idea: rotate around the center of the middle right cube 
-        // translate to that cur_position, rotate, then reverse the translate
         rs.is_rotating = true;
         rs.rotation_start_frame = cur_frame;
         return;
@@ -547,13 +541,13 @@ class CubeList {
 
         int top_transforms[] = {
             0, 1, 2, 9, 10, 11, 18, 19, 20,     // position 0
-            18, 9, 0, 19, 10, 1, 20, 11, 2,
+            18, 9, 0, 19, 10, 1, 20, 11, 2,     // position 1
         };
         int top_color[] = {0, 0, 1};
 
         int equator_transforms[] = {
             3, 4, 5, 12, 13, 14, 21, 22, 23,    // position 0
-            21, 12, 3, 22, 13, 4, 23, 14, 5,
+            21, 12, 3, 22, 13, 4, 23, 14, 5,    // position 1
         };
         int equator_color[] = {0, 0, 1};
 
@@ -692,7 +686,7 @@ class CubeList {
         if ((glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) && (rs.is_rotating == false)) {
             int x = 0;
             while (x < 20) {
-                int move_num = rand() % 14;
+                int move_num = rand() % 15;
                 if (move_num != 7) {
                     move_queue.push_back(move_num);
                     x++;
@@ -816,7 +810,6 @@ class CubeList {
         if ((glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 15;   // rotate entire cube
             rotateSide(cur_frame);
-            cout << rs.rotation_side << "\n";
         } 
         // Rotate entire cube clockwise
         if ((glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (rs.is_rotating == false)) {
@@ -963,7 +956,6 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 }
 
 int main() {
-    // Set Flag that extension is supported
     int window_width = 800;
     int window_height = 600;
     GLFWwindow *window = setUpAndCreateWindow(window_width, window_height);
@@ -1057,11 +1049,8 @@ int main() {
     }
 
     
-    cout << "total time = " << end_time - start_time << "\n";
-    cout << "total number of frames = " << num_frames << "\n";
+    // cout << "total time = " << end_time - start_time << "\n";
+    // cout << "total number of frames = " << num_frames << "\n";
     glfwDestroyWindow(window);
     glfwTerminate();
 }
-
-// TODO: make non visible sides of cubes gray so that opposite color doesn't show mid turn
-// TODO: make sure that use of sleep function will actually function on all OS's https://www.geeksforgeeks.org/sleep-function-in-cpp/
