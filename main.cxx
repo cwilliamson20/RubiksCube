@@ -14,6 +14,7 @@ using namespace glm;
 #include <glm/gtc/type_ptr.hpp>
 #include <unistd.h>
 #include "stb_image.h"
+#include <cstdlib>
 
 
 vec3 camera_pos = vec3(0.0f, 0.0f, 3.0f);
@@ -29,6 +30,9 @@ float last_frame = 0.0f; // Time of last frame
 float frames_per_second = 60.0;
 float start_time = glfwGetTime();
 int change_texture = 0.0;
+std::vector<int> move_queue;
+bool change_color = false;
+bool solved = true;
 
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,
@@ -142,8 +146,8 @@ class RotationStatus {
 
         // rotation type indicates which slice of the cube is rotating
 
-                            // back, front,  left,  right, bottom,  top, equator, entire, back', front', left',  right', bottom', top', equator'
-        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, -90.0f, -90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, 90.0f, 90.0f};
+                            // back, front,  left,  right, bottom,  top, equator, entire, back', front', left',  right', bottom', top', equator', entire'
+        float angle_list[] = {90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, -90.0f, -90.0f, -90.0f, 90.0f, -90.0f, 90.0f, -90.0f, 90.0f, 90.0f, 90.0f};
         float slice_angle = angle_list[rotation_side];
 
         if (!is_rotating) {
@@ -151,7 +155,6 @@ class RotationStatus {
         }
         if (cur_frame - rotation_start_frame == frames_per_rotation) {
             // finish the rotation and set this side into the final cur_position
-            cout << "cur_angle = " << cur_angle << "\n";
             is_rotating = false;
             cur_angle = 0.0f;
             // cout << "just finished the rotation on frame " << cur_frame << "\n";
@@ -430,6 +433,7 @@ class CubeList {
         // if cube_cur_positions matches {0, 1, ..., 26} then the cube is solved
         int cube_cur_positions[27]; 
         int cube_solved_positions[27];  // changed when cube is rotated to keep track of what solved looks like
+        int color_index = -1;
 
     CubeList() {
         // set up cur_position and start_position values for each cube
@@ -449,10 +453,47 @@ class CubeList {
         }
     }
 
-    void changeColorPallete(float in_colors[]) {
-        // takes in a list of 18 floats an applies that color scheme to the cube
-        for (int x = 0; x < 18; x+= 3) {
-            setAllCubeSideColor(x / 3, in_colors[x], in_colors[x + 1], in_colors[x + 2]);
+    void changeColorPallete() {
+        color_index = (color_index + 1) % 4;
+        change_color = false;
+        float color_schemes[] = {
+            // default scheme: very bright
+            255.0,  133.0,  2.0,    // back = orange
+            255.0,  0.0,    0.0,    // front = red
+            0.0,    0.0,  255.0,    // left = blue
+            0.0,    255.0,  0.0,    // right = green
+            255.0,  255.0,255.0,    // bottom = white
+            255.0,  255.0,  0.0,    // top = yellow
+
+            // pastel colors
+            247.0, 197.0, 111.0,
+            255.0, 88.0, 69.0,
+            48.0, 152.0, 255.0,
+            115.0, 240.0, 157.0,
+            237.0, 237.0, 237.0,
+            255.0, 255.0, 128.0,
+
+            // neon 
+            225, 0, 255,    // back
+            255, 0, 115,    // front
+            37, 52, 54,     // left
+            0, 255, 247,    // right
+            225, 255, 0,    // bottom
+            0, 255, 21,     // top
+
+            // grayscale ("hard" mode)
+            42.5, 42.5, 42.5,
+            85, 85, 85,
+            127.5, 127.5, 127.5,
+            170, 170, 170,
+            212.5, 212.5, 212.5,
+            255, 255, 255, 
+        };
+
+
+        // applies the color scheme at index color_index
+        for (int x = color_index * 18; x < (color_index * 18) + 18; x+= 3) {
+            setAllCubeSideColor((x - (18 * color_index)) / 3, color_schemes[x], color_schemes[x + 1], color_schemes[x + 2]);
         }
     }
 
@@ -562,7 +603,21 @@ class CubeList {
            rs.rotation_side = 7;
            return;
         }
-        if (rs.rotation_side >= 8 && rs.rotation_side <= 15) {
+        if (rs.rotation_side == 15) { // rotate entire cube in bottom rotation direction
+           // do top fixes
+           rs.rotation_side = 13;
+           finishSideRotation();
+           // do middle fixes
+           rs.rotation_side = 14;
+           finishSideRotation();
+           // do bottom fixes
+           rs.rotation_side = 4;
+           finishSideRotation();
+           // leave because the rest of this function doesn't need to run
+           rs.rotation_side = 15;
+           return;
+        }
+        if (rs.rotation_side >= 8 && rs.rotation_side <= 14) {
             // do the same transform but 3 times to mimic the reverse rotation
             rs.rotation_side -= 8;
             finishSideRotation();
@@ -585,6 +640,12 @@ class CubeList {
                     break;
                 }
             }
+        }
+    }
+
+    void addAlgorithmToQueue(int alg[], int num_moves) {
+        for (int x = 0; x < num_moves; x++) {
+            move_queue.push_back(alg[x]);
         }
     }
 
@@ -616,67 +677,152 @@ class CubeList {
         if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS)
             cam_height -= camera_speed;
 
-        // deal with input to perform rotations
+
+        // do moves in move queue if there are any
+        if ((rs.is_rotating == false) && (move_queue.size() != 0)) {
+            // do the next move in move queue
+            rs.rotation_side = move_queue[0];
+            rotateSide(cur_frame);
+
+            // move up the queue
+            move_queue.erase(move_queue.begin(), move_queue.begin() + 1);
+        }
+
+        // scramble cube
+        if ((glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int x = 0;
+            while (x < 20) {
+                int move_num = rand() % 14;
+                if (move_num != 7) {
+                    move_queue.push_back(move_num);
+                    x++;
+                }
+            }
+        }
+
+        // insert right algorithm
+        if ((glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {5, 3, 13, 11, 13, 9, 5, 1};
+            addAlgorithmToQueue(alg, 8);
+        }
+
+        // insert left algorithm
+        if ((glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {13, 10, 5, 2, 5, 1, 13, 9};
+            addAlgorithmToQueue(alg, 8);
+        }
+
+        // make yellow cross algorithm
+        if ((glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {1, 5, 3, 13, 11, 9};
+            addAlgorithmToQueue(alg, 6);
+        }
+
+        // make yellow top algorithm
+        if ((glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {3, 5, 11, 5, 3, 5, 5, 11};
+            addAlgorithmToQueue(alg, 8);
+        }
+
+        // flip front top two corners algorithm
+        if ((glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {11, 1, 11, 0, 0, 3, 9, 11, 0, 0, 3, 3, 13};
+            addAlgorithmToQueue(alg, 13);
+        }
+
+        // rotate center top colors clockwise
+        if ((glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {1, 1, 5, 2, 11, 1, 1, 10, 3, 5, 1, 1};
+            addAlgorithmToQueue(alg, 12);
+        }
+
+        // rotate center top colors counter-clockwise
+        if ((glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            int alg[] = {1, 1, 13, 2, 11, 1, 1, 10, 3, 13, 1, 1};
+            addAlgorithmToQueue(alg, 12);
+        }
+
+        // R'
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 11;
             rotateSide(cur_frame);
         }
+        // R
         if ((glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 3;   // right rotation
             rotateSide(cur_frame);
         }
+        // L'
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 10;
             rotateSide(cur_frame);
         }
+        // L
         if ((glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 2;   // left rotation
             rotateSide(cur_frame);
         }
+        // F'
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 9;
             rotateSide(cur_frame);
         }
+        // F
         if ((glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 1;   // front rotation
             rotateSide(cur_frame);
         }
+        // B'
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 8;
             rotateSide(cur_frame);
         }
+        // B
         if ((glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 0;   // back rotation
             rotateSide(cur_frame);
         }
+        // D'
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 12;
             rotateSide(cur_frame);
         }
+        // D
         if ((glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 4;
             rotateSide(cur_frame);
         }
+        // U'
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 13;
             rotateSide(cur_frame);
         }
+        // U
         if ((glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 5;   // up rotation
             rotateSide(cur_frame);
         }
+        // E' (same direction as D)
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) && (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 14;
             rotateSide(cur_frame);
         }
+        // E (same direction as U)
         if ((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 6;   // equator rotation
             rotateSide(cur_frame);
         }  
+        // Rotate entire cube counterclockwise
         if ((glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (rs.is_rotating == false)) {
+            rs.rotation_side = 15;   // rotate entire cube
+            rotateSide(cur_frame);
+            cout << rs.rotation_side << "\n";
+        } 
+        // Rotate entire cube clockwise
+        if ((glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) && (rs.is_rotating == false)) {
             rs.rotation_side = 7;   // rotate entire cube
             rotateSide(cur_frame);
-        }   
+        }    
     }
 
     mat4 generateRotationModelMatrix(mat4 in_model, bool is_rotating, int start_position, float rotation_angle) {
@@ -715,11 +861,11 @@ class CubeList {
             center_translate = x_center_translate_list[(int) (start_position / 3)];
         if ((rs.rotation_side == 3 || rs.rotation_side == 11) && (start_position % 3 == 2))  // right
             center_translate = x_center_translate_list[(int) ((start_position - 2) / 3)];
-        if ((rs.rotation_side == 4 || rs.rotation_side == 7 || rs.rotation_side == 12) && (start_position % 9 >= 6))  // bottom
+        if ((rs.rotation_side == 4 || rs.rotation_side == 7 || rs.rotation_side == 12 || rs.rotation_side == 15) && (start_position % 9 >= 6))  // bottom
            center_translate = y_center_translate_list[((start_position % 9) - 6) + (((int) start_position / 3) - 2)];
-        if ((rs.rotation_side == 5 || rs.rotation_side == 7 || rs.rotation_side == 13) && (start_position % 9 <= 2))  // top
+        if ((rs.rotation_side == 5 || rs.rotation_side == 7 || rs.rotation_side == 13 || rs.rotation_side == 15) && (start_position % 9 <= 2))  // top
             center_translate = y_center_translate_list[(start_position % 9) + ((int) start_position / 3)];
-        if ((rs.rotation_side == 6 || rs.rotation_side == 7 || rs.rotation_side == 14) && (start_position % 9 >= 3 && start_position % 9 <= 5))  // middle
+        if ((rs.rotation_side == 6 || rs.rotation_side == 7 || rs.rotation_side == 14 || rs.rotation_side == 15) && (start_position % 9 >= 3 && start_position % 9 <= 5))  // middle
             center_translate = y_center_translate_list[((start_position % 9) - 3) + (((int) start_position / 3) - 1)];
         
 
@@ -738,7 +884,7 @@ class CubeList {
         if (((rs.rotation_side == 4 || rs.rotation_side == 12) && ((start_position % 9 >= 6))) ||   // bottom
         ((rs.rotation_side == 5 || rs.rotation_side == 13) && (start_position % 9 <= 2)) ||         // top
         ((rs.rotation_side == 6 || rs.rotation_side == 14) && (start_position % 9 >= 3 && start_position % 9 <= 5)) ||  // equator
-        ((rs.rotation_side == 7) && ((start_position % 9 <= 2) || (start_position % 9 >= 6) || (start_position % 9 >= 3 && start_position % 9 <= 5)))) { // rotate entire cube
+        (((rs.rotation_side == 7) || (rs.rotation_side == 15)) && ((start_position % 9 <= 2) || (start_position % 9 >= 6) || (start_position % 9 >= 3 && start_position % 9 <= 5)))) { // rotate entire cube
             in_model = rotate(in_model, rotation_angle, vec3(0.0, 1.0, 0.0));
         }
 
@@ -771,7 +917,7 @@ class CubeList {
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, value_ptr(projection));
     }
 
-    void updateTexture() {
+    void updateStickerTexture() {
         int width, height, nrChannels;
         unsigned char *data;
         switch(change_texture) {
@@ -784,6 +930,16 @@ class CubeList {
         }
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
+    }
+
+    void checkIfSolved() {
+        // checks if the cube is currently solved
+        solved = true;
+        for (int x = 0; x < 27; x++) {
+            if (cube_solved_positions[x] != cube_cur_positions[x]) {
+                solved = false;
+            }
+        }
     }
 };
 
@@ -799,6 +955,11 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
     // change cube texture
     if (key == GLFW_KEY_M && action == GLFW_PRESS) 
        change_texture = (change_texture + 1) % 2;
+
+    // change color scheme
+    if (key == GLFW_KEY_N && action == GLFW_PRESS && solved) {
+        change_color = true;
+    }
 }
 
 int main() {
@@ -834,18 +995,8 @@ int main() {
     // new process input using glfwKeyCallback to prevent multiple inputs from one key tap
     glfwSetKeyCallback(window, keyCallback);
 
-    // set up initial default color pallete
-    // back, front, left, right, bottom, top
-    float default_colors[] = {
-        255.0,  133.0,  2.0,    // back = orange
-        255.0,  0.0,    0.0,    // front = red
-        0.0,    0.0,  255.0,    // left = blue
-        0.0,    255.0,  0.0,    // right = green
-        255.0,  255.0,255.0,    // bottom = white
-        255.0,  255.0,  0.0,    // top = yellow
-    };
-
-    cube_list.changeColorPallete(default_colors);
+    // set default color pallete
+    cube_list.changeColorPallete();
 
     // Accept fragment if it closer to the camera than the former one
     // glDepthFunc(GL_LESS);
@@ -862,12 +1013,16 @@ int main() {
 
         // process input
         cube_list.processInput(window, num_frames);
-        cube_list.updateTexture();
+        cube_list.updateStickerTexture();
+        if (change_color) cube_list.changeColorPallete();
 
         bool finished_rotation = cube_list.rs.updateRotation(num_frames);
         if (finished_rotation) {
             cube_list.finishSideRotation();
         }
+
+        // check if the cube is solved
+        cube_list.checkIfSolved();
 
         // clear the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -878,7 +1033,6 @@ int main() {
         // draw all of the cubes from the cube list
         for (int x = 0; x < 27; x++) {
             cube_list.cubes[x].activateCubeColors();
-            // TODO: clean up the things I'm passing into this function now that it's in the CubeList class
             cube_list.setUpMVPMatrices(program_id, window_width, window_height, cube_translates[cube_list.cube_cur_positions[x]], cube_list.cube_cur_positions[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
